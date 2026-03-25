@@ -1,0 +1,284 @@
+const prisma = require('../lib/prisma');
+const { generateInvoicePdf } = require('../services/pdfService');
+const { sendInvoiceEmail } = require('../services/emailService');
+
+// Generates next invoice number like INV-0001
+async function nextInvoiceNumber(userId) {
+  const last = await prisma.invoice.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    select: { invoiceNumber: true },
+  });
+  if (!last) return 'INV-0001';
+  const num = parseInt(last.invoiceNumber.split('-')[1] || '0', 10) + 1;
+  return `INV-${String(num).padStart(4, '0')}`;
+}
+
+function calcTotals(items, taxRate = 0, discountRate = 0) {
+  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const discountAmount = subtotal * (discountRate / 100);
+  const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
+  const total = subtotal - discountAmount + taxAmount;
+  return {
+    subtotal: +subtotal.toFixed(2),
+    taxAmount: +taxAmount.toFixed(2),
+    discountAmount: +discountAmount.toFixed(2),
+    total: +total.toFixed(2),
+  };
+}
+
+exports.getInvoices = async (req, res, next) => {
+  try {
+    const { status, clientId, from, to, page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const where = {
+      userId: req.userId,
+      ...(status && { status }),
+      ...(clientId && { clientId }),
+      ...(from || to
+        ? {
+            issueDate: {
+              ...(from && { gte: new Date(from) }),
+              ...(to && { lte: new Date(to) }),
+            },
+          }
+        : {}),
+    };
+
+    const [invoices, total] = await Promise.all([
+      prisma.invoice.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      prisma.invoice.count({ where }),
+    ]);
+
+    res.json({ invoices, total, page: Number(page), limit: Number(limit) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getInvoice = async (req, res, next) => {
+  try {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: {
+        client: true,
+        items: { orderBy: { order: 'asc' } },
+        payments: { orderBy: { paidAt: 'desc' } },
+      },
+    });
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+    res.json(invoice);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createInvoice = async (req, res, next) => {
+  try {
+    const { clientId, dueDate, currency, items, taxRate = 0, discountRate = 0, notes, terms, status = 'DRAFT' } = req.body;
+
+    const client = await prisma.client.findFirst({ where: { id: clientId, userId: req.userId } });
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+
+    const invoiceNumber = await nextInvoiceNumber(req.userId);
+    const totals = calcTotals(items, Number(taxRate), Number(discountRate));
+
+    const invoice = await prisma.invoice.create({
+      data: {
+        userId: req.userId,
+        clientId,
+        invoiceNumber,
+        dueDate: new Date(dueDate),
+        currency: currency || 'USD',
+        taxRate: Number(taxRate),
+        discountRate: Number(discountRate),
+        notes,
+        terms,
+        status,
+        ...totals,
+        items: {
+          create: items.map((item, idx) => ({
+            description: item.description,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+            total: +(Number(item.quantity) * Number(item.unitPrice)).toFixed(2),
+            order: idx,
+          })),
+        },
+      },
+      include: {
+        client: true,
+        items: { orderBy: { order: 'asc' } },
+      },
+    });
+
+    res.status(201).json(invoice);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateInvoice = async (req, res, next) => {
+  try {
+    const existing = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+    });
+    if (!existing) return res.status(404).json({ error: 'Invoice not found' });
+    if (existing.status === 'PAID') {
+      return res.status(400).json({ error: 'Cannot edit a paid invoice' });
+    }
+
+    const { items, taxRate, discountRate, dueDate, currency, notes, terms, status } = req.body;
+    const data = {};
+
+    if (dueDate) data.dueDate = new Date(dueDate);
+    if (currency) data.currency = currency;
+    if (notes !== undefined) data.notes = notes;
+    if (terms !== undefined) data.terms = terms;
+    if (status) data.status = status;
+
+    if (items) {
+      const totals = calcTotals(
+        items,
+        Number(taxRate ?? existing.taxRate),
+        Number(discountRate ?? existing.discountRate),
+      );
+      Object.assign(data, totals, {
+        taxRate: Number(taxRate ?? existing.taxRate),
+        discountRate: Number(discountRate ?? existing.discountRate),
+      });
+
+      await prisma.invoiceItem.deleteMany({ where: { invoiceId: req.params.id } });
+      data.items = {
+        create: items.map((item, idx) => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          total: +(Number(item.quantity) * Number(item.unitPrice)).toFixed(2),
+          order: idx,
+        })),
+      };
+    }
+
+    const invoice = await prisma.invoice.update({
+      where: { id: req.params.id },
+      data,
+      include: {
+        client: true,
+        items: { orderBy: { order: 'asc' } },
+        payments: true,
+      },
+    });
+
+    res.json(invoice);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteInvoice = async (req, res, next) => {
+  try {
+    const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, userId: req.userId } });
+    if (!existing) return res.status(404).json({ error: 'Invoice not found' });
+    await prisma.invoice.delete({ where: { id: req.params.id } });
+    res.json({ message: 'Invoice deleted' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.sendInvoice = async (req, res, next) => {
+  try {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: { client: true, items: { orderBy: { order: 'asc' } } },
+    });
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+    if (!invoice.client.email) {
+      return res.status(400).json({ error: 'Client has no email address' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    const pdfBuffer = await generateInvoicePdf(invoice, user);
+    await sendInvoiceEmail({ invoice, client: invoice.client, user, pdfBuffer });
+
+    const updated = await prisma.invoice.update({
+      where: { id: req.params.id },
+      data: { status: 'SENT', sentAt: new Date() },
+    });
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.recordPayment = async (req, res, next) => {
+  try {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: { payments: true },
+    });
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    const { amount, method, reference, paidAt, notes } = req.body;
+
+    const payment = await prisma.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        amount: Number(amount),
+        method,
+        reference,
+        paidAt: paidAt ? new Date(paidAt) : new Date(),
+        notes,
+      },
+    });
+
+    const totalPaid = invoice.payments.reduce((s, p) => s + Number(p.amount), 0) + Number(amount);
+    const invoiceTotal = Number(invoice.total);
+
+    let status = 'PARTIAL';
+    if (totalPaid >= invoiceTotal) status = 'PAID';
+
+    await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        amountPaid: totalPaid,
+        status,
+        ...(status === 'PAID' ? { paidAt: new Date() } : {}),
+      },
+    });
+
+    res.status(201).json(payment);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.downloadPdf = async (req, res, next) => {
+  try {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: { client: true, items: { orderBy: { order: 'asc' } } },
+    });
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    const pdfBuffer = await generateInvoicePdf(invoice, user);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoiceNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    next(err);
+  }
+};
