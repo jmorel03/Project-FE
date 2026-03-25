@@ -21,3 +21,6 @@ pages_build_output_dir = "frontend/dist"
 # [[kv_namespaces]]
 # binding = "KV"
 # id = "your-kv-namespace-id"
+
+#[assets]
+directory = "./dist"
