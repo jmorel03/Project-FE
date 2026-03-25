@@ -2,7 +2,7 @@
 # Not required for Pages-only deployment — use the Cloudflare dashboard instead.
 # Kept here as a reference for any future Cloudflare Workers API additions.
 
-name = "invoiceflow"
+name = "projectfe"
 compatibility_date = "2024-01-01"
 
 # ─── Pages project ───────────────────────────────────────────────────────────
