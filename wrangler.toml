@@ -22,6 +22,6 @@ pages_build_output_dir = "frontend/dist"
 # binding = "KV"
 # id = "your-kv-namespace-id"
 
-#[assets]
-directory = "./dist"
-main = "src/index.ts"
+# [assets]
+# directory = "./dist"
+# main = "src/index.ts"
