@@ -7,7 +7,7 @@ compatibility_date = "2024-01-01"
 
 # ─── Pages project ───────────────────────────────────────────────────────────
 # Bind to your Pages project if using wrangler pages deploy
-# pages_build_output_dir = "frontend/dist"
+pages_build_output_dir = "frontend/dist"
 
 # ─── Environment variables (set via Cloudflare dashboard for security) ────────
 # VITE_API_URL = "https://api.yourdomain.com/api"
