@@ -110,6 +110,13 @@ export const expenseService = {
   getCategories: () => api.get('/expenses/categories').then((r) => r.data),
   createCategory: (data) => api.post('/expenses/categories', data).then((r) => r.data),
   deleteCategory: (id) => api.delete(`/expenses/categories/${id}`),
+  uploadReceipt: (id, file) => {
+    const fd = new FormData();
+    fd.append('receipt', file);
+    return api.post(`/expenses/${id}/receipt`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  },
 };
 
 export const dashboardService = {

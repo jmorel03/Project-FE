@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon, PaperClipIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { expenseService } from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
@@ -32,6 +32,10 @@ export default function Expenses() {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadExpense, setUploadExpense] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['expenses', { page, search }],
@@ -48,6 +52,7 @@ export default function Expenses() {
   });
 
   const openCreate = () => { setEditing(null); reset({ currency: 'USD', date: format(new Date(), 'yyyy-MM-dd'), isBillable: false }); setOpen(true); };
+  const openUpload = (exp) => { setUploadExpense(exp); setReceiptFile(null); setUploadOpen(true); };
   const openEdit = (exp) => {
     setEditing(exp);
     reset({
@@ -78,6 +83,17 @@ export default function Expenses() {
     mutationFn: expenseService.delete,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses'] }); toast.success('Expense deleted'); },
     onError: (err) => toast.error(err?.response?.data?.error || 'Delete failed'),
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: ({ id, file }) => expenseService.uploadReceipt(id, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      toast.success('Receipt uploaded');
+      setUploadOpen(false);
+      setReceiptFile(null);
+    },
+    onError: (err) => toast.error(err?.response?.data?.error || 'Upload failed'),
   });
 
   const expenses = data?.expenses || [];
@@ -139,7 +155,25 @@ export default function Expenses() {
                   <td className="px-4 py-3.5"><Badge status={exp.status} /></td>
                   <td className="px-6 py-3.5 text-right font-semibold text-gray-800">{fmt(exp.amount, exp.currency)}</td>
                   <td className="px-4 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
+                      {exp.receiptUrl ? (
+                        <a
+                          href={exp.receiptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View receipt"
+                          className="p-1.5 rounded text-green-600 hover:text-green-700 hover:bg-green-50"
+                        >
+                          <PaperClipIcon className="w-4 h-4" />
+                        </a>
+                      ) : null}
+                      <button
+                        onClick={() => openUpload(exp)}
+                        title="Upload receipt"
+                        className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                      >
+                        <ArrowUpTrayIcon className="w-4 h-4" />
+                      </button>
                       <button onClick={() => openEdit(exp)} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100">Edit</button>
                       <button
                         onClick={() => { if (confirm('Delete this expense?')) deleteMutation.mutate(exp.id); }}
@@ -162,6 +196,55 @@ export default function Expenses() {
           </div>
         )}
       </div>
+
+      {/* Receipt Upload Modal */}
+      <Modal open={uploadOpen} onClose={() => { setUploadOpen(false); setReceiptFile(null); }} title="Upload Receipt">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Attach a receipt for <span className="font-medium">{uploadExpense?.vendor}</span>
+          </p>
+          <div
+            className="border-2 border-dashed border-gray-200 rounded-lg px-6 py-10 text-center cursor-pointer hover:border-primary-400 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setReceiptFile(f); }}
+          >
+            <ArrowUpTrayIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+            {receiptFile ? (
+              <p className="text-sm font-medium text-gray-700">{receiptFile.name}</p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500">Click or drag &amp; drop a file here</p>
+                <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP or PDF &middot; max 10 MB</p>
+              </>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={(e) => setReceiptFile(e.target.files[0] || null)}
+            />
+          </div>
+          {uploadExpense?.receiptUrl && (
+            <p className="text-xs text-gray-500">
+              Current receipt:{' '}
+              <a href={uploadExpense.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">view existing</a>
+              {' '}— uploading will replace it.
+            </p>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => { setUploadOpen(false); setReceiptFile(null); }} className="btn-secondary">Cancel</button>
+            <button
+              disabled={!receiptFile || uploadMutation.isPending}
+              onClick={() => uploadMutation.mutate({ id: uploadExpense.id, file: receiptFile })}
+              className="btn-primary"
+            >
+              {uploadMutation.isPending ? 'Uploading…' : 'Upload'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create / Edit Modal */}
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Expense' : 'Add Expense'}>
