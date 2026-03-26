@@ -6,7 +6,8 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { billingService } from '../services/api';
 import toast from 'react-hot-toast';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 function formatMoney(amount, currency = 'usd') {
   if (amount == null) return '-';
@@ -20,6 +21,14 @@ function AddCardForm({ onSuccess, onCancel }) {
   const stripe = useStripe();
   const elements = useElements();
   const [saving, setSaving] = useState(false);
+
+  if (!stripeKey) {
+    return (
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm text-amber-700">Stripe is not configured. Add <code className="font-mono text-xs">VITE_STRIPE_PUBLISHABLE_KEY</code> to your environment variables.</p>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,7 +65,7 @@ function AddCardForm({ onSuccess, onCancel }) {
       </div>
       <div className="flex gap-3">
         <button type="submit" disabled={saving || !stripe} className="btn-primary">
-          {saving ? 'Savingâ€¦' : 'Save card'}
+          {saving ? 'Saving…' : 'Save card'}
         </button>
         <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
       </div>
@@ -139,7 +148,7 @@ export default function Subscription() {
           </div>
 
           {summaryLoading ? (
-            <p className="text-sm text-gray-500">Loadingâ€¦</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : activeSub ? (
             <div className="rounded-lg border border-gray-200 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -167,7 +176,7 @@ export default function Subscription() {
                         onClick={() => cancelMutation.mutate()}
                         disabled={cancelMutation.isPending}
                       >
-                        {cancelMutation.isPending ? 'Cancelingâ€¦' : 'Yes, cancel'}
+                        {cancelMutation.isPending ? 'Canceling…' : 'Yes, cancel'}
                       </button>
                       <button className="text-sm text-gray-500 hover:text-gray-700" onClick={() => setCancelConfirm(false)}>
                         Keep plan
@@ -206,7 +215,7 @@ export default function Subscription() {
           </div>
 
           {summaryLoading ? (
-            <p className="text-sm text-gray-500">Loadingâ€¦</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <>
               {cards.length === 0 && !showAddCard && (
@@ -221,7 +230,7 @@ export default function Subscription() {
                           <CreditCardIcon className="w-5 h-5 text-gray-700" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900 uppercase">{card.brand} â€¢â€¢â€¢â€¢ {card.last4}</p>
+                          <p className="text-sm font-medium text-gray-900 uppercase">{card.brand} •••• {card.last4}</p>
                           <p className="text-xs text-gray-500">Expires {card.expMonth}/{card.expYear}</p>
                         </div>
                       </div>
@@ -267,7 +276,7 @@ export default function Subscription() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Change Plan</h2>
 
           {plansLoading ? (
-            <p className="text-sm text-gray-500">Loading plansâ€¦</p>
+            <p className="text-sm text-gray-500">Loading plans…</p>
           ) : (
             <div className="grid md:grid-cols-3 gap-4">
               {plans.map((plan) => {
@@ -301,7 +310,7 @@ export default function Subscription() {
                         disabled={checkoutMutation.isPending}
                         onClick={() => checkoutMutation.mutate(plan.key)}
                       >
-                        {checkoutMutation.isPending ? 'Opening checkoutâ€¦' : 'Upgrade'}
+                        {checkoutMutation.isPending ? 'Opening checkout…' : 'Upgrade'}
                       </button>
                     )}
                   </div>
