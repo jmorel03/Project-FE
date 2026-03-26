@@ -12,6 +12,7 @@ router.use(authenticate);
 router.get('/', getClients);
 router.get('/:id', param('id').isUUID(), validate, getClient);
 
+// Create, update, delete clients
 router.post('/', [
   body('name').trim().notEmpty().withMessage('Client name is required'),
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
