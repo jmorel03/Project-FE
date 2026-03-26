@@ -258,6 +258,95 @@ exports.createCheckoutSession = async (req, res, next) => {
   }
 };
 
+exports.createSetupIntent = async (req, res, next) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Billing is not configured yet' });
+
+    const user = await getCurrentUser(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const customer = await getOrCreateCustomer(stripe, user);
+
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customer.id,
+      payment_method_types: ['card'],
+    });
+
+    res.json({ clientSecret: setupIntent.client_secret });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.setDefaultPaymentMethod = async (req, res, next) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Billing is not configured yet' });
+
+    const { paymentMethodId } = req.body;
+    if (!paymentMethodId) return res.status(400).json({ error: 'paymentMethodId required' });
+
+    const user = await getCurrentUser(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const customer = await getOrCreateCustomer(stripe, user);
+
+    await stripe.customers.update(customer.id, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deletePaymentMethod = async (req, res, next) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Billing is not configured yet' });
+
+    const { paymentMethodId } = req.body;
+    if (!paymentMethodId) return res.status(400).json({ error: 'paymentMethodId required' });
+
+    await stripe.paymentMethods.detach(paymentMethodId);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.cancelSubscription = async (req, res, next) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Billing is not configured yet' });
+
+    const user = await getCurrentUser(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const activeSub = await prisma.billingSubscription.findFirst({
+      where: { userId: user.id, status: { in: ['active', 'trialing'] }, stripeSubscriptionId: { not: { startsWith: 'free_' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeSub) return res.status(404).json({ error: 'No active paid subscription found' });
+
+    await stripe.subscriptions.update(activeSub.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    await prisma.billingSubscription.update({
+      where: { id: activeSub.id },
+      data: { cancelAtPeriodEnd: true },
+    });
+
+    res.json({ ok: true, message: 'Subscription will cancel at end of billing period' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.createPortalSession = async (req, res, next) => {
   try {
     const stripe = getStripe();
