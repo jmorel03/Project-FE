@@ -11,6 +11,7 @@ const invoiceRoutes = require('./routes/invoices');
 const expenseRoutes = require('./routes/expenses');
 const dashboardRoutes = require('./routes/dashboard');
 const billingRoutes = require('./routes/billing');
+const billingWebhookRoutes = require('./routes/billingWebhook');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -37,6 +38,9 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use(limiter);
+
+// Stripe webhook must receive raw body for signature verification
+app.use('/api/billing/webhooks', billingWebhookRoutes);
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));

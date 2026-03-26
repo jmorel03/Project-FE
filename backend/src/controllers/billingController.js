@@ -18,6 +18,9 @@ const getStripe = () => {
 
 const getClientBaseUrl = () => process.env.APP_URL || process.env.CLIENT_URL || 'http://localhost:5173';
 
+const guessPlanKeyFromPrice = (priceId) =>
+  Object.entries(PLAN_PRICE_IDS).find(([, configuredPriceId]) => configuredPriceId === priceId)?.[0] || null;
+
 async function getCurrentUser(userId) {
   return prisma.user.findUnique({
     where: { id: userId },
@@ -55,6 +58,44 @@ async function getOrCreateCustomer(stripe, user) {
     metadata: {
       userId: user.id,
       companyName: user.companyName || '',
+    },
+  });
+}
+
+async function upsertSubscriptionRecord({ stripeCustomerId, stripeSubscription }) {
+  const stripe = getStripe();
+  const customer = await stripe.customers.retrieve(stripeCustomerId);
+  const userId = customer?.metadata?.userId;
+
+  if (!userId) {
+    return;
+  }
+
+  const firstItem = stripeSubscription.items?.data?.[0];
+  const priceId = firstItem?.price?.id || null;
+
+  await prisma.billingSubscription.upsert({
+    where: { stripeSubscriptionId: stripeSubscription.id },
+    create: {
+      userId,
+      stripeCustomerId,
+      stripeSubscriptionId: stripeSubscription.id,
+      status: stripeSubscription.status,
+      planKey: guessPlanKeyFromPrice(priceId),
+      stripePriceId: priceId,
+      currentPeriodEnd: stripeSubscription.current_period_end
+        ? new Date(stripeSubscription.current_period_end * 1000)
+        : null,
+      cancelAtPeriodEnd: Boolean(stripeSubscription.cancel_at_period_end),
+    },
+    update: {
+      status: stripeSubscription.status,
+      planKey: guessPlanKeyFromPrice(priceId),
+      stripePriceId: priceId,
+      currentPeriodEnd: stripeSubscription.current_period_end
+        ? new Date(stripeSubscription.current_period_end * 1000)
+        : null,
+      cancelAtPeriodEnd: Boolean(stripeSubscription.cancel_at_period_end),
     },
   });
 }
@@ -117,6 +158,10 @@ exports.getBillingSummary = async (req, res, next) => {
     });
 
     const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+    const persisted = await prisma.billingSubscription.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
     res.json({
       customer: {
@@ -144,6 +189,7 @@ exports.getBillingSummary = async (req, res, next) => {
         expYear: pm.card?.exp_year,
         isDefault: defaultPaymentMethodId === pm.id,
       })),
+      persistedSubscriptions: persisted,
     });
   } catch (err) {
     next(err);
@@ -215,5 +261,71 @@ exports.createPortalSession = async (req, res, next) => {
     res.json({ url: session.url });
   } catch (err) {
     next(err);
+  }
+};
+
+exports.handleStripeWebhook = async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) {
+    return res.status(503).send('Billing not configured');
+  }
+
+  const signature = req.headers['stripe-signature'];
+  if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return res.status(400).send('Missing webhook signature or secret');
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        if (session.mode === 'subscription' && session.subscription && session.customer) {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription, {
+            expand: ['items.data.price'],
+          });
+          await upsertSubscriptionRecord({
+            stripeCustomerId: session.customer,
+            stripeSubscription: subscription,
+          });
+        }
+        break;
+      }
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        await upsertSubscriptionRecord({
+          stripeCustomerId: subscription.customer,
+          stripeSubscription: subscription,
+        });
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        await prisma.billingSubscription.updateMany({
+          where: { stripeSubscriptionId: subscription.id },
+          data: {
+            status: subscription.status || 'canceled',
+            cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+            currentPeriodEnd: subscription.current_period_end
+              ? new Date(subscription.current_period_end * 1000)
+              : null,
+          },
+        });
+        break;
+      }
+      default:
+        break;
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    res.status(500).send(`Webhook processing failed: ${err.message}`);
   }
 };
