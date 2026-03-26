@@ -1,14 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Sora:wght@500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-ink: #0f172a;
+    --brand-muted: #475569;
+    --brand-surface: #f8fafc;
+  }
+
   * {
     box-sizing: border-box;
   }
 
   body {
+    font-family: 'DM Sans', sans-serif;
     @apply bg-gray-50 text-gray-900 antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Sora', sans-serif;
   }
 
   ::-webkit-scrollbar {
@@ -62,5 +80,17 @@
 
   .stat-card {
     @apply card p-6 flex flex-col gap-2;
+  }
+
+  .marketing-shell {
+    @apply min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100;
+  }
+
+  .marketing-wrap {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .hero-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm;
   }
 }

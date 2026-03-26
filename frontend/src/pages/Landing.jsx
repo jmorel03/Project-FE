@@ -27,84 +27,102 @@ const features = [
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="marketing-shell relative overflow-hidden">
+      <div className="pointer-events-none absolute -top-16 -left-16 h-72 w-72 rounded-full bg-cyan-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute top-40 -right-16 h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl" />
       <PublicNav />
 
       {/* Hero Section */}
-      <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-            Manage Invoices & Expenses
-            <span className="block text-primary-600">With Confidence</span>
+      <section className="pt-24 pb-20">
+        <div className="marketing-wrap text-center">
+          <span className="hero-chip mb-6">Built for freelancers, agencies, and modern teams</span>
+          <h1 className="text-4xl leading-tight sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mb-6">
+            Invoice faster.
+            <span className="block text-primary-600">Get paid sooner.</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Xpensist is the all-in-one platform for freelancers and small businesses to create professional invoices, 
-            track expenses, and manage cash flow—all from one place.
+          <p className="text-lg sm:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+            Xpensist helps you run billing, clients, and expenses in one focused workspace so you spend less time on admin and more time growing revenue.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/register"
-              className="px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition inline-block"
+              className="px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition inline-block shadow-lg shadow-primary-200"
             >
               Start Free Today
             </Link>
             <Link
               to="/login"
-              className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-gray-400 transition inline-block"
+              className="px-8 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-semibold hover:border-slate-400 transition inline-block"
             >
               Sign In
             </Link>
           </div>
-          <p className="text-sm text-gray-500 mt-4">No credit card required. Start in seconds.</p>
-        </div>
-      </section>
+          <p className="text-sm text-slate-500 mt-4">No credit card required. Live in under 2 minutes.</p>
 
-      {/* Features Section */}
-      <section id="features" className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Everything You Need
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {features.map(({ name, description, icon: Icon }) => (
-              <div key={name} className="p-6 rounded-lg border border-gray-200 hover:shadow-lg transition">
-                <Icon className="w-12 h-12 text-primary-600 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{name}</h3>
-                <p className="text-gray-600">{description}</p>
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            {[
+              ['10K+', 'active businesses'],
+              ['$500M+', 'invoices processed'],
+              ['99.9%', 'platform uptime'],
+            ].map(([value, label]) => (
+              <div key={label} className="rounded-xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
+                <p className="text-2xl font-extrabold text-slate-900">{value}</p>
+                <p className="text-sm text-slate-600">{label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          <div>
-            <p className="text-4xl font-bold text-primary-600">10K+</p>
-            <p className="text-gray-600 mt-2">Active Users</p>
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-white">
+        <div className="marketing-wrap">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center text-slate-900 mb-3">
+            Everything You Need
+          </h2>
+          <p className="text-center text-slate-600 mb-12 max-w-2xl mx-auto">
+            Practical tools designed to help you close invoices, monitor business spend, and stay on top of cash flow.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
+            {features.map(({ name, description, icon: Icon }) => (
+              <div key={name} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 hover:bg-white hover:shadow-lg transition">
+                <div className="mb-4 inline-flex rounded-xl bg-primary-100 p-3">
+                  <Icon className="w-7 h-7 text-primary-700" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">{name}</h3>
+                <p className="text-slate-600 leading-relaxed">{description}</p>
+              </div>
+            ))}
           </div>
-          <div>
-            <p className="text-4xl font-bold text-primary-600">$500M+</p>
-            <p className="text-gray-600 mt-2">Invoiced</p>
-          </div>
-          <div>
-            <p className="text-4xl font-bold text-primary-600">99.9%</p>
-            <p className="text-gray-600 mt-2">Uptime</p>
+        </div>
+      </section>
+
+      {/* Social Proof */}
+      <section className="py-14">
+        <div className="marketing-wrap">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-semibold tracking-wide text-slate-500 text-center mb-6">TRUSTED BY OPERATORS WORLDWIDE</p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-5 text-center text-slate-500 text-sm font-semibold">
+              <span>Northpeak Studio</span>
+              <span>Horizon Works</span>
+              <span>Craftline Co</span>
+              <span>Nova Agency</span>
+              <span>Atlas Creative</span>
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-primary-600">
-        <div className="max-w-4xl mx-auto text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">Ready to simplify your invoicing?</h2>
-          <p className="text-lg mb-8 opacity-90">
+      <section className="py-20 bg-primary-600">
+        <div className="marketing-wrap text-center text-white">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to simplify your invoicing?</h2>
+          <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
             Join thousands of freelancers and small business owners already using Xpensist.
           </p>
           <Link
             to="/register"
-            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition"
+            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg"
           >
             Get Started Free
           </Link>
@@ -112,7 +130,7 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-8 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-slate-900 text-slate-400 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <p>&copy; 2026 Xpensist. All rights reserved.</p>
         </div>

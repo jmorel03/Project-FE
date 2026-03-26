@@ -55,42 +55,48 @@ const plans = [
 
 export default function Pricing() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="marketing-shell">
       <PublicNav />
 
       {/* Hero */}
-      <section className="pt-20 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+      <section className="pt-24 pb-12">
+        <div className="marketing-wrap text-center">
+          <span className="hero-chip mb-5">Plans for solo founders to scaling teams</span>
+          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-4">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">
             Choose the perfect plan for your business. All plans include a 14-day free trial.
           </p>
         </div>
       </section>
 
       {/* Pricing Cards */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-12">
+        <div className="marketing-wrap">
           <div className="grid md:grid-cols-3 gap-8">
             {plans.map((plan) => (
               <div
                 key={plan.name}
-                className={`rounded-lg transition ${
+                className={`rounded-2xl transition ${
                   plan.highlighted
-                    ? 'bg-primary-600 text-white shadow-2xl scale-105'
-                    : 'bg-white border border-gray-200 text-gray-900'
+                    ? 'bg-primary-600 text-white shadow-2xl md:scale-105 ring-4 ring-primary-100/70'
+                    : 'bg-white border border-slate-200 text-slate-900 shadow-sm'
                 }`}
               >
                 <div className="p-8">
                   {/* Plan Header */}
-                  <h3 className={`text-2xl font-bold mb-2 ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>
+                  {plan.highlighted && (
+                    <span className="mb-4 inline-flex rounded-full bg-white/20 px-3 py-1 text-xs font-bold tracking-wide text-white">
+                      MOST POPULAR
+                    </span>
+                  )}
+                  <h3 className={`text-2xl font-bold mb-2 ${plan.highlighted ? 'text-white' : 'text-slate-900'}`}>
                     {plan.name}
                   </h3>
                   <p
                     className={`text-sm mb-6 ${
-                      plan.highlighted ? 'text-primary-100' : 'text-gray-600'
+                      plan.highlighted ? 'text-primary-100' : 'text-slate-600'
                     }`}
                   >
                     {plan.description}
@@ -100,12 +106,12 @@ export default function Pricing() {
                   <div className="mb-6">
                     <span className="text-5xl font-bold">${plan.price}</span>
                     {plan.price > 0 && (
-                      <span className={plan.highlighted ? 'text-primary-100' : 'text-gray-600'}>
+                      <span className={plan.highlighted ? 'text-primary-100' : 'text-slate-600'}>
                         /month
                       </span>
                     )}
                     {plan.price === 0 && (
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-slate-600">
                         {' '}
                         forever
                       </span>
@@ -118,7 +124,7 @@ export default function Pricing() {
                     className={`block w-full py-3 px-4 rounded-lg font-semibold text-center mb-8 transition ${
                       plan.highlighted
                         ? 'bg-white text-primary-600 hover:bg-gray-100'
-                        : 'bg-primary-600 text-white hover:bg-primary-700'
+                        : 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm'
                     }`}
                   >
                     {plan.cta}
@@ -145,9 +151,9 @@ export default function Pricing() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+      <section className="py-16 bg-white border-y border-slate-200/70">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-center text-slate-900 mb-12">
             Frequently Asked Questions
           </h2>
           <div className="space-y-8">
@@ -169,9 +175,9 @@ export default function Pricing() {
                 a: 'We accept all major credit cards, PayPal, and bank transfers for business accounts.',
               },
             ].map(({ q, a }) => (
-              <div key={q}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{q}</h3>
-                <p className="text-gray-600">{a}</p>
+              <div key={q} className="rounded-xl border border-slate-200 p-5 bg-slate-50/70">
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{q}</h3>
+                <p className="text-slate-600">{a}</p>
               </div>
             ))}
           </div>
@@ -179,8 +185,8 @@ export default function Pricing() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-primary-600">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="py-20 bg-primary-600">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Start your free trial today
           </h2>
@@ -197,7 +203,7 @@ export default function Pricing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-8 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-slate-900 text-slate-400 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <p>&copy; 2026 Xpensist. All rights reserved.</p>
         </div>

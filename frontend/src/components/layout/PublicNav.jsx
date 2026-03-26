@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 
@@ -6,35 +6,45 @@ export default function PublicNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed w-full top-0 z-50 bg-white border-b border-gray-200">
+    <nav className="fixed w-full top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-primary-600">
+          <Link to="/" className="text-2xl font-extrabold tracking-tight text-slate-900">
             Xpensist
           </Link>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-gray-600 hover:text-gray-900 transition">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `text-sm font-medium transition ${isActive ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900'}`
+              }
+            >
               Home
-            </Link>
-            <Link to="/pricing" className="text-gray-600 hover:text-gray-900 transition">
+            </NavLink>
+            <NavLink
+              to="/pricing"
+              className={({ isActive }) =>
+                `text-sm font-medium transition ${isActive ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900'}`
+              }
+            >
               Pricing
-            </Link>
-            <a href="#features" className="text-gray-600 hover:text-gray-900 transition">
+            </NavLink>
+            <a href="/#features" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">
               Features
             </a>
             <div className="flex items-center gap-3">
               <Link
                 to="/login"
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
               >
                 Login
               </Link>
               <Link
                 to="/register"
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                className="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 transition"
               >
                 Sign Up
               </Link>
@@ -56,35 +66,35 @@ export default function PublicNav() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden pb-4 space-y-3 border-t border-gray-200">
+          <div className="md:hidden pb-4 space-y-3 border-t border-slate-200">
             <Link
               to="/"
-              className="block px-4 py-2 text-gray-600 hover:text-gray-900"
+              className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
               to="/pricing"
-              className="block px-4 py-2 text-gray-600 hover:text-gray-900"
+              className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
               onClick={() => setMobileMenuOpen(false)}
             >
               Pricing
             </Link>
             <a
-              href="#features"
-              className="block px-4 py-2 text-gray-600 hover:text-gray-900"
+              href="/#features"
+              className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
               onClick={() => setMobileMenuOpen(false)}
             >
               Features
             </a>
-            <div className="px-4 pt-3 border-t border-gray-200 space-y-2">
-              <Link to="/login" className="block px-4 py-2 text-center text-gray-700">
+            <div className="px-4 pt-3 border-t border-slate-200 space-y-2">
+              <Link to="/login" className="block rounded-lg px-4 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-100">
                 Login
               </Link>
               <Link
                 to="/register"
-                className="block px-4 py-2 bg-primary-600 text-white rounded-lg text-center"
+                className="block rounded-lg bg-primary-600 px-4 py-2 text-center text-sm font-semibold text-white"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Sign Up
