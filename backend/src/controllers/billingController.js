@@ -153,8 +153,20 @@ exports.getPlans = async (req, res, next) => {
 exports.getBillingSummary = async (req, res, next) => {
   try {
     const stripe = getStripe();
+
+    const persisted = await prisma.billingSubscription.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
     if (!stripe) {
-      return res.status(503).json({ error: 'Billing is not configured yet' });
+      return res.json({
+        customer: null,
+        subscriptions: [],
+        cards: [],
+        persistedSubscriptions: persisted,
+        billingConfigured: false,
+      });
     }
 
     const user = await getCurrentUser(req.userId);
@@ -178,11 +190,6 @@ exports.getBillingSummary = async (req, res, next) => {
     });
 
     const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
-    const persisted = await prisma.billingSubscription.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: 'desc' },
-    });
-
     res.json({
       customer: {
         id: customer.id,
@@ -210,6 +217,7 @@ exports.getBillingSummary = async (req, res, next) => {
         isDefault: defaultPaymentMethodId === pm.id,
       })),
       persistedSubscriptions: persisted,
+      billingConfigured: true,
     });
   } catch (err) {
     next(err);

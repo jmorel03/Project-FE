@@ -32,7 +32,10 @@ function AddCardForm({ onSuccess, onCancel }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      toast.error('Secure card form is still loading. Please wait a second and try again.');
+      return;
+    }
     setSaving(true);
     try {
       const { clientSecret } = await billingService.createSetupIntent();
@@ -55,13 +58,18 @@ function AddCardForm({ onSuccess, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
       <div className="rounded-lg border border-gray-200 p-4 bg-white">
-        <CardElement
-          options={{
-            style: {
-              base: { fontSize: '14px', color: '#111827', '::placeholder': { color: '#9ca3af' } },
-            },
-          }}
-        />
+        {!stripe ? (
+          <p className="text-sm text-gray-500">Loading secure card form…</p>
+        ) : (
+          <CardElement
+            options={{
+              hidePostalCode: true,
+              style: {
+                base: { fontSize: '14px', color: '#111827', '::placeholder': { color: '#9ca3af' } },
+              },
+            }}
+          />
+        )}
       </div>
       <div className="flex gap-3">
         <button type="submit" disabled={saving || !stripe} className="btn-primary">
@@ -121,12 +129,14 @@ export default function Subscription() {
   const subscriptions = summaryData?.subscriptions || [];
   const persistedSubscriptions = summaryData?.persistedSubscriptions || [];
   const cards = summaryData?.cards || [];
+  const billingConfigured = summaryData?.billingConfigured !== false;
 
   const activeSub = subscriptions.find((s) => s.status === 'active' || s.status === 'trialing');
-  const activePlanKey =
-    activeSub?.items?.[0]?.priceId
-      ? plans.find((p) => p.priceId === activeSub.items[0].priceId)?.key
-      : persistedSubscriptions.find((p) => p.status === 'active')?.planKey || null;
+  const persistedActive = persistedSubscriptions.find((p) => String(p.status).toLowerCase() === 'active');
+  const activePlanKeyFromStripe = activeSub?.items?.[0]?.priceId
+    ? plans.find((p) => p.priceId === activeSub.items[0].priceId)?.key
+    : null;
+  const activePlanKey = activePlanKeyFromStripe || persistedActive?.planKey || null;
 
   const hasPaidSub = activeSub && !activeSub.cancelAtPeriodEnd;
 
@@ -196,7 +206,7 @@ export default function Subscription() {
                 <p className="text-sm font-semibold text-gray-900 capitalize">{activePlanKey} Plan</p>
                 <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 uppercase tracking-wide">Active</span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Free â€” upgrade anytime below.</p>
+              <p className="text-sm text-gray-500 mt-1">Free — upgrade anytime below.</p>
             </div>
           ) : (
             <p className="text-sm text-gray-500">No active subscription.</p>
@@ -208,7 +218,7 @@ export default function Subscription() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Payment Methods</h2>
             {!showAddCard && (
-              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium" onClick={() => setShowAddCard(true)}>
+              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium disabled:text-gray-400" onClick={() => setShowAddCard(true)} disabled={!billingConfigured}>
                 + Add card
               </button>
             )}
@@ -218,6 +228,9 @@ export default function Subscription() {
             <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <>
+              {!billingConfigured && (
+                <p className="text-sm text-amber-700 mb-3">Billing is not configured on the server yet. Card management is temporarily unavailable.</p>
+              )}
               {cards.length === 0 && !showAddCard && (
                 <p className="text-sm text-gray-500">No cards on file.</p>
               )}
