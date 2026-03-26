@@ -18,6 +18,8 @@ router.post('/', [
   body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
 ], validate, createClient);
 
+
+// Update client - only name and email can be updated
 router.put('/:id', [
   param('id').isUUID(),
   body('name').optional().trim().notEmpty(),
