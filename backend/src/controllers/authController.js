@@ -38,6 +38,17 @@ exports.register = async (req, res, next) => {
       ],
     });
 
+    // Assign free starter tier
+    await prisma.billingSubscription.create({
+      data: {
+        userId: user.id,
+        stripeCustomerId: '',
+        stripeSubscriptionId: `free_${user.id}`,
+        status: 'active',
+        planKey: 'starter',
+      },
+    });
+
     const accessToken = signAccess(user.id);
     const refreshToken = signRefresh(user.id);
 
