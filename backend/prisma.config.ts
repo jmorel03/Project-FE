@@ -7,7 +7,11 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    // Prefer pooled URL for deploy stability, fallback to direct when needed.
-    url: process.env.DATABASE_URL ?? process.env.DIRECT_URL ?? '',
+    // Use a dedicated migration URL first to avoid session-pool limits.
+    url:
+      process.env.MIGRATION_DATABASE_URL ??
+      process.env.DIRECT_URL ??
+      process.env.DATABASE_URL ??
+      '',
   },
 });
