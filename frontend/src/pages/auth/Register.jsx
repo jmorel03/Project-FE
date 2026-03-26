@@ -6,13 +6,19 @@ import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 
-const schema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  companyName: z.string().optional(),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Invalid email'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    companyName: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 export default function Register() {
   const { register: registerUser } = useAuth();
@@ -61,6 +67,7 @@ export default function Register() {
             <Input label="Company name" placeholder="Acme Inc. (optional)" error={errors.companyName?.message} {...register('companyName')} />
             <Input label="Email address" type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
             <Input label="Password" type="password" placeholder="Min. 8 characters" error={errors.password?.message} {...register('password')} />
+            <Input label="Confirm password" type="password" placeholder="Re-enter password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />
             <button type="submit" disabled={isSubmitting} className="btn-primary w-full justify-center py-2.5">
               {isSubmitting ? 'Creating account…' : 'Create account'}
             </button>
