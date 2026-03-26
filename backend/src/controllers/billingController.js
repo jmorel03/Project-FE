@@ -100,31 +100,51 @@ async function upsertSubscriptionRecord({ stripeCustomerId, stripeSubscription }
   });
 }
 
+const STATIC_FREE_PLAN = {
+  key: 'starter',
+  priceId: null,
+  name: 'Starter',
+  description: 'Core expense and invoice tracking — free forever.',
+  amount: 0,
+  currency: 'usd',
+  interval: null,
+  isFree: true,
+};
+
+const PLAN_ORDER = ['starter', 'professional', 'business'];
+
 exports.getPlans = async (req, res, next) => {
   try {
     const stripe = getStripe();
-    if (!stripe) {
-      return res.status(503).json({ error: 'Billing is not configured yet' });
-    }
 
-    const plans = await Promise.all(
-      Object.entries(PLAN_PRICE_IDS)
-        .filter(([, priceId]) => Boolean(priceId))
-        .map(async ([key, priceId]) => {
-          const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
-          return {
-            key,
-            priceId,
-            name: price.product?.name || key,
-            description: price.product?.description || '',
-            amount: price.unit_amount,
-            currency: price.currency,
-            interval: price.recurring?.interval || null,
-          };
-        }),
+    // Always include starter as a static free plan.
+    const stripeEntries = Object.entries(PLAN_PRICE_IDS).filter(
+      ([key, priceId]) => key !== 'starter' && Boolean(priceId),
     );
 
-    res.json({ plans });
+    const stripePlans = stripe
+      ? await Promise.all(
+          stripeEntries.map(async ([key, priceId]) => {
+            const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+            return {
+              key,
+              priceId,
+              name: price.product?.name || key,
+              description: price.product?.description || '',
+              amount: price.unit_amount,
+              currency: price.currency,
+              interval: price.recurring?.interval || null,
+              isFree: false,
+            };
+          }),
+        )
+      : [];
+
+    const allPlans = [STATIC_FREE_PLAN, ...stripePlans].sort(
+      (a, b) => PLAN_ORDER.indexOf(a.key) - PLAN_ORDER.indexOf(b.key),
+    );
+
+    res.json({ plans: allPlans });
   } catch (err) {
     next(err);
   }

@@ -44,7 +44,15 @@ export default function Subscription() {
 
   const plans = plansData?.plans || [];
   const subscriptions = summaryData?.subscriptions || [];
+  const persistedSubscriptions = summaryData?.persistedSubscriptions || [];
   const cards = summaryData?.cards || [];
+
+  // Determine current plan key — prefer live Stripe subscription, fallback to DB record.
+  const activeSub = subscriptions.find((s) => s.status === 'active' || s.status === 'trialing');
+  const activePlanKey =
+    activeSub?.items?.[0]?.priceId
+      ? plans.find((p) => p.priceId === activeSub.items[0].priceId)?.key
+      : persistedSubscriptions.find((p) => p.status === 'active')?.planKey || null;
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -74,15 +82,13 @@ export default function Subscription() {
 
         {summaryLoading ? (
           <p className="text-sm text-gray-500">Loading subscription details…</p>
-        ) : subscriptions.length === 0 ? (
-          <p className="text-sm text-gray-500">No active subscription yet.</p>
-        ) : (
+        ) : activeSub ? (
           <div className="space-y-3">
-            {subscriptions.map((sub) => (
+            {subscriptions.filter((s) => s.status === 'active' || s.status === 'trialing').map((sub) => (
               <div key={sub.id} className="rounded-lg border border-gray-200 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-gray-900">{sub.items?.[0]?.productName || 'Subscription'}</p>
-                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 uppercase tracking-wide">
+                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 uppercase tracking-wide">
                     {sub.status}
                   </span>
                 </div>
@@ -98,6 +104,16 @@ export default function Subscription() {
               </div>
             ))}
           </div>
+        ) : activePlanKey ? (
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-gray-900 capitalize">{activePlanKey} Plan</p>
+              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 uppercase tracking-wide">Active</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">Free — upgrade anytime to unlock more features.</p>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No active subscription yet.</p>
         )}
       </div>
 
@@ -139,26 +155,45 @@ export default function Subscription() {
           <p className="text-sm text-gray-500">No Stripe plans configured yet. Add Stripe price IDs in backend environment variables.</p>
         ) : (
           <div className="grid md:grid-cols-3 gap-4">
-            {plans.map((plan) => (
-              <div key={plan.key} className="rounded-lg border border-gray-200 p-4 flex flex-col gap-3">
-                <div>
-                  <p className="font-semibold text-gray-900">{plan.name}</p>
-                  <p className="text-sm text-gray-500">{plan.description || 'Subscription plan'}</p>
-                </div>
-                <p className="text-xl font-bold text-gray-900">
-                  {formatMoney(plan.amount, plan.currency)}
-                  {plan.interval ? <span className="text-sm font-normal text-gray-500"> / {plan.interval}</span> : null}
-                </p>
-                <button
-                  type="button"
-                  className="btn-primary mt-auto"
-                  disabled={checkoutMutation.isPending}
-                  onClick={() => checkoutMutation.mutate(plan.key)}
+            {plans.map((plan) => {
+              const isCurrent = activePlanKey === plan.key;
+              return (
+                <div
+                  key={plan.key}
+                  className={`rounded-lg border p-4 flex flex-col gap-3 ${
+                    isCurrent ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+                  }`}
                 >
-                  {checkoutMutation.isPending ? 'Opening checkout…' : `Subscribe`}
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900">{plan.name}</p>
+                      <p className="text-sm text-gray-500">{plan.description || 'Subscription plan'}</p>
+                    </div>
+                    {isCurrent && (
+                      <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 font-medium">Current</span>
+                    )}
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">
+                    {plan.isFree ? 'Free' : formatMoney(plan.amount, plan.currency)}
+                    {plan.interval ? <span className="text-sm font-normal text-gray-500"> / {plan.interval}</span> : null}
+                  </p>
+                  {isCurrent ? (
+                    <div className="mt-auto text-sm text-center text-primary-700 font-medium py-2">Your current plan</div>
+                  ) : plan.isFree ? (
+                    <div className="mt-auto text-sm text-center text-gray-400 py-2">Included with every account</div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-primary mt-auto"
+                      disabled={checkoutMutation.isPending}
+                      onClick={() => checkoutMutation.mutate(plan.key)}
+                    >
+                      {checkoutMutation.isPending ? 'Opening checkout…' : 'Upgrade'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
