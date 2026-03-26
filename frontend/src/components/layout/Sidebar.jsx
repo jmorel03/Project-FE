@@ -4,6 +4,7 @@ import {
   DocumentTextIcon,
   CreditCardIcon,
   UsersIcon,
+  WalletIcon,
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/invoices', icon: DocumentTextIcon, label: 'Invoices' },
   { to: '/expenses', icon: CreditCardIcon, label: 'Expenses' },
   { to: '/clients', icon: UsersIcon, label: 'Clients' },
+  { to: '/settings/subscription', icon: WalletIcon, label: 'Subscription' },
   { to: '/settings', icon: Cog6ToothIcon, label: 'Settings' },
 ];
 

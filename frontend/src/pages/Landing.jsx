@@ -35,13 +35,13 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="pt-24 pb-20">
         <div className="marketing-wrap text-center">
-          <span className="hero-chip mb-6">Built for freelancers, agencies, and modern teams</span>
+          <span className="hero-chip mb-6">Invoice and expense management in one place</span>
           <h1 className="text-4xl leading-tight sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mb-6">
-            Invoice faster.
-            <span className="block text-primary-600">Get paid sooner.</span>
+            Run invoicing and expenses
+            <span className="block text-primary-600">from a single dashboard.</span>
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-            Xpensist helps you run billing, clients, and expenses in one focused workspace so you spend less time on admin and more time growing revenue.
+            Xpensist helps you create invoices, manage clients, record payments, and track expenses with receipt uploads. It is built for straightforward day-to-day operations.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -57,16 +57,16 @@ export default function Landing() {
               Sign In
             </Link>
           </div>
-          <p className="text-sm text-slate-500 mt-4">No credit card required. Live in under 2 minutes.</p>
+          <p className="text-sm text-slate-500 mt-4">Use your account to create clients, invoices, and expenses immediately.</p>
 
           <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {[
-              ['10K+', 'active businesses'],
-              ['$500M+', 'invoices processed'],
-              ['99.9%', 'platform uptime'],
+              ['Invoices', 'Create, send, and track status'],
+              ['Expenses', 'Categorize costs and upload receipts'],
+              ['Dashboard', 'Review revenue and activity'],
             ].map(([value, label]) => (
               <div key={label} className="rounded-xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
-                <p className="text-2xl font-extrabold text-slate-900">{value}</p>
+                <p className="text-lg font-extrabold text-slate-900">{value}</p>
                 <p className="text-sm text-slate-600">{label}</p>
               </div>
             ))}
@@ -78,10 +78,10 @@ export default function Landing() {
       <section id="features" className="py-20 bg-white">
         <div className="marketing-wrap">
           <h2 className="text-3xl sm:text-4xl font-bold text-center text-slate-900 mb-3">
-            Everything You Need
+            Core Capabilities
           </h2>
           <p className="text-center text-slate-600 mb-12 max-w-2xl mx-auto">
-            Practical tools designed to help you close invoices, monitor business spend, and stay on top of cash flow.
+            The current platform focuses on practical essentials: invoice workflows, client records, expense tracking, and payment visibility.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
             {features.map(({ name, description, icon: Icon }) => (
@@ -97,18 +97,16 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Product Summary */}
       <section className="py-14">
         <div className="marketing-wrap">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold tracking-wide text-slate-500 text-center mb-6">TRUSTED BY OPERATORS WORLDWIDE</p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-5 text-center text-slate-500 text-sm font-semibold">
-              <span>Northpeak Studio</span>
-              <span>Horizon Works</span>
-              <span>Craftline Co</span>
-              <span>Nova Agency</span>
-              <span>Atlas Creative</span>
-            </div>
+            <p className="text-sm font-semibold tracking-wide text-slate-500 text-center mb-3">CURRENT PRODUCT SCOPE</p>
+            <p className="mx-auto max-w-3xl text-center text-slate-600 leading-relaxed">
+              Xpensist currently includes authentication, client management, invoice creation and tracking, payment recording,
+              expense categories, receipt uploads, and dashboard reporting. Additional subscription billing and advanced billing
+              automation can be introduced as next-stage features.
+            </p>
           </div>
         </div>
       </section>
@@ -118,7 +116,7 @@ export default function Landing() {
         <div className="marketing-wrap text-center text-white">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to simplify your invoicing?</h2>
           <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
-            Join thousands of freelancers and small business owners already using Xpensist.
+            Start with the current core workflow: clients, invoices, expenses, and reporting.
           </p>
           <Link
             to="/register"

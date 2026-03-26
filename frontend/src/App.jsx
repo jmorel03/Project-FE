@@ -12,6 +12,7 @@ import InvoiceView from './pages/InvoiceView';
 import Expenses from './pages/Expenses';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
+import Subscription from './pages/Subscription';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="/invoices/:id/edit" element={<InvoiceCreate />} />
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/settings/subscription" element={<Subscription />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 

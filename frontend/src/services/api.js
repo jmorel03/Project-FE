@@ -124,3 +124,10 @@ export const dashboardService = {
   revenue: () => api.get('/dashboard/revenue').then((r) => r.data),
   activity: () => api.get('/dashboard/activity').then((r) => r.data),
 };
+
+export const billingService = {
+  getPlans: () => api.get('/billing/plans').then((r) => r.data),
+  getSummary: () => api.get('/billing/summary').then((r) => r.data),
+  createCheckoutSession: (planKey) => api.post('/billing/checkout-session', { planKey }).then((r) => r.data),
+  createPortalSession: () => api.post('/billing/portal-session').then((r) => r.data),
+};
