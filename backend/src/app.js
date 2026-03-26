@@ -12,6 +12,7 @@ const expenseRoutes = require('./routes/expenses');
 const dashboardRoutes = require('./routes/dashboard');
 const billingRoutes = require('./routes/billing');
 const billingWebhookRoutes = require('./routes/billingWebhook');
+const supportRoutes = require('./routes/support');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -59,6 +60,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/support', supportRoutes);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {

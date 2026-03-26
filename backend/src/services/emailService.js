@@ -73,7 +73,7 @@ exports.sendInvoiceEmail = async ({ invoice, client, user, pdfBuffer }) => {
           ${invoice.notes ? `<p style="background:#f3f4f6;padding:12px;border-radius:6px;font-size:13px;">${invoice.notes}</p>` : ''}
         </div>
         <div class="footer">
-          <p>This invoice was sent by ${fromName} via InvoiceFlow.</p>
+          <p>This invoice was sent by ${fromName} via Xpensist.</p>
           <p>If you have any questions, please reply to this email.</p>
         </div>
       </div>
@@ -93,5 +93,41 @@ exports.sendInvoiceEmail = async ({ invoice, client, user, pdfBuffer }) => {
         contentType: 'application/pdf',
       },
     ],
+  });
+};
+
+exports.sendSupportEmail = async ({ fromName, fromEmail, subject, message }) => {
+  const transporter = createTransport();
+  const supportEmail = process.env.SUPPORT_EMAIL || process.env.FROM_EMAIL;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;background:#f9fafb;margin:0;padding:0;">
+      <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
+        <div style="background:#4f46e5;padding:24px 32px;color:#fff;">
+          <h2 style="margin:0;font-size:18px;">Support Request — Xpensist</h2>
+        </div>
+        <div style="padding:32px;">
+          <p><strong>From:</strong> ${fromName} &lt;${fromEmail}&gt;</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+          <div style="white-space:pre-wrap;font-size:14px;line-height:1.6;">${message}</div>
+        </div>
+        <div style="background:#f9fafb;padding:16px 32px;font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;">
+          Reply directly to this email to respond to the user.
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: `"Xpensist Support" <${process.env.FROM_EMAIL}>`,
+    to: supportEmail,
+    replyTo: `"${fromName}" <${fromEmail}>`,
+    subject: `[Support] ${subject}`,
+    html,
   });
 };

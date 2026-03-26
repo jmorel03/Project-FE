@@ -25,7 +25,7 @@ export default function Sidebar() {
         <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
           <DocumentTextIcon className="w-4.5 h-4.5 text-white" />
         </div>
-        <span className="text-lg font-bold text-gray-900">InvoiceFlow</span>
+        <span className="text-lg font-bold text-gray-900">Xpensist</span>
       </div>
 
       {/* Nav */}
@@ -51,7 +51,7 @@ export default function Sidebar() {
 
       {/* Bottom branding */}
       <div className="px-5 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-400">InvoiceFlow v1.0</p>
+        <p className="text-xs text-gray-400">Xpensist v1.0</p>
       </div>
     </aside>
   );

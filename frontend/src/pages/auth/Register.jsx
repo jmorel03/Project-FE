@@ -31,7 +31,7 @@ export default function Register() {
     try {
       await registerUser(data);
       navigate('/dashboard');
-      toast.success('Welcome to InvoiceFlow!');
+      toast.success('Welcome to Xpensist!');
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Registration failed');
     }

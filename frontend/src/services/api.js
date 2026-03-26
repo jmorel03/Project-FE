@@ -134,3 +134,7 @@ export const billingService = {
   deletePaymentMethod: (paymentMethodId) => api.post('/billing/delete-payment-method', { paymentMethodId }).then((r) => r.data),
   cancelSubscription: () => api.post('/billing/cancel-subscription').then((r) => r.data),
 };
+
+export const supportService = {
+  sendMessage: (subject, message) => api.post('/support/contact', { subject, message }).then((r) => r.data),
+};
