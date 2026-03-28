@@ -129,6 +129,7 @@ export const billingService = {
   getPlans: () => api.get('/billing/plans').then((r) => r.data),
   getSummary: () => api.get('/billing/summary').then((r) => r.data),
   createCheckoutSession: (planKey) => api.post('/billing/checkout-session', { planKey }).then((r) => r.data),
+  createPortalSession: () => api.post('/billing/portal-session').then((r) => r.data),
   createSetupIntent: () => api.post('/billing/setup-intent').then((r) => r.data),
   setDefaultPaymentMethod: (paymentMethodId) => api.post('/billing/set-default-payment-method', { paymentMethodId }).then((r) => r.data),
   deletePaymentMethod: (paymentMethodId) => api.post('/billing/delete-payment-method', { paymentMethodId }).then((r) => r.data),

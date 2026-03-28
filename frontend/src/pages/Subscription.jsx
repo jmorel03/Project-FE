@@ -118,7 +118,17 @@ export default function Subscription() {
       </div>
 
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h2>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Payment Methods</h2>
+          <button
+            type="button"
+            onClick={() => portalMutation.mutate()}
+            disabled={portalMutation.isPending}
+            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            {portalMutation.isPending ? 'Opening…' : 'Add Payment Method'}
+          </button>
+        </div>
         {summaryLoading ? (
           <p className="text-sm text-gray-500">Loading cards…</p>
         ) : cards.length === 0 ? (
@@ -197,42 +207,5 @@ export default function Subscription() {
         )}
       </div>
     </div>
-  );
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-gray-900">{plan.name}</p>
-                        <p className="text-sm text-gray-500">{plan.description || 'Subscription plan'}</p>
-                      </div>
-                      {isCurrent && (
-                        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 font-medium">Current</span>
-                      )}
-                    </div>
-                    <p className="text-xl font-bold text-gray-900">
-                      {plan.isFree ? 'Free' : formatMoney(plan.amount, plan.currency)}
-                      {plan.interval ? <span className="text-sm font-normal text-gray-500"> / {plan.interval}</span> : null}
-                    </p>
-                    {isCurrent ? (
-                      <div className="mt-auto text-sm text-center text-primary-700 font-medium py-2">Your current plan</div>
-                    ) : plan.isFree ? (
-                      <div className="mt-auto text-sm text-center text-gray-400 py-2">Included with every account</div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-primary mt-auto"
-                        disabled={checkoutMutation.isPending}
-                        onClick={() => checkoutMutation.mutate(plan.key)}
-                      >
-                        {checkoutMutation.isPending ? 'Opening checkout…' : 'Upgrade'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </Elements>
   );
 }
