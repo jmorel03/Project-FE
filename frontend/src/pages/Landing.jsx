@@ -61,6 +61,14 @@ export default function Landing() {
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
                 Xpensist combines invoicing, expense tracking, reminders, and dashboard guidance so the admin side of your business stops stealing attention from the actual work.
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                  Free forever starter plan
+                </span>
+                <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-700">
+                  14-day free trial on paid plans
+                </span>
+              </div>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:-translate-y-0.5 hover:bg-primary-700">
                   Start Free Today
@@ -133,6 +141,26 @@ export default function Landing() {
               <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="pb-10">
+        <div className="marketing-wrap grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-5 py-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Starter</p>
+            <p className="mt-2 text-3xl font-black text-slate-900">$0</p>
+            <p className="mt-1 text-sm text-slate-600">Free forever. Great for getting your invoicing system in place.</p>
+          </div>
+          <div className="rounded-2xl border border-primary-200 bg-primary-50/80 px-5 py-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-700">Professional</p>
+            <p className="mt-2 text-3xl font-black text-slate-900">$29/mo</p>
+            <p className="mt-1 text-sm text-slate-600">Includes a 14-day free trial before billing starts.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white/95 px-5 py-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">Business</p>
+            <p className="mt-2 text-3xl font-black text-slate-900">$79/mo</p>
+            <p className="mt-1 text-sm text-slate-600">Includes a 14-day free trial with premium controls and support.</p>
+          </div>
         </div>
       </section>
 

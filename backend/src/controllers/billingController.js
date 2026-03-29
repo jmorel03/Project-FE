@@ -1,6 +1,8 @@
 const Stripe = require('stripe');
 const prisma = require('../lib/prisma');
 
+const TRIAL_DAYS = 14;
+
 const PLAN_PRICE_IDS = {
   starter: process.env.STRIPE_PRICE_STARTER || '',
   professional: process.env.STRIPE_PRICE_PROFESSIONAL || '',
@@ -23,6 +25,7 @@ const PLAN_DETAILS = {
       automation: 'Manual only',
       reporting: 'Basic',
     },
+    trialDays: 0,
   },
   professional: {
     tagline: 'For growing freelancers and service businesses.',
@@ -40,6 +43,7 @@ const PLAN_DETAILS = {
       automation: 'Reminders and workflows',
       reporting: 'Advanced',
     },
+    trialDays: TRIAL_DAYS,
   },
   business: {
     tagline: 'For operators who need admin control and premium support.',
@@ -57,6 +61,7 @@ const PLAN_DETAILS = {
       automation: 'Advanced',
       reporting: 'Executive',
     },
+    trialDays: TRIAL_DAYS,
   },
 };
 
@@ -392,6 +397,12 @@ exports.createCheckoutSession = async (req, res, next) => {
       return Boolean(firstItem?.price?.id);
     });
 
+    // Offer the trial only on a user's first paid subscription checkout.
+    const hasPaidHistory = existingSubs.data.some((sub) => {
+      const firstItem = sub.items?.data?.[0];
+      return Boolean(firstItem?.price?.id);
+    });
+
     if (currentPaidSub) {
       const firstItem = currentPaidSub.items.data[0];
 
@@ -431,17 +442,24 @@ exports.createCheckoutSession = async (req, res, next) => {
     }
 
     const baseUrl = getClientBaseUrl(req);
+    const trialDays = !hasPaidHistory && normalizedPlan !== 'starter' ? TRIAL_DAYS : 0;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customer.id,
       line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: trialDays > 0
+        ? {
+            trial_period_days: trialDays,
+          }
+        : undefined,
       success_url: `${baseUrl}/settings/subscription?checkout=success`,
       cancel_url: `${baseUrl}/settings/subscription?checkout=cancelled`,
       allow_promotion_codes: true,
       metadata: {
         userId: user.id,
         planKey: normalizedPlan,
+        trialDays: String(trialDays),
       },
     });
 

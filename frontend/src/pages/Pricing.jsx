@@ -26,6 +26,7 @@ const fallbackPlans = [
     amount: 2900,
     currency: 'usd',
     interval: 'month',
+    trialDays: 14,
     isFree: false,
     cta: 'Upgrade to Professional',
     perks: ['Unlimited invoices and clients', 'Automatic invoice reminder workflows', 'Advanced dashboard insights', 'Priority support', 'Receipt uploads and organization'],
@@ -38,6 +39,7 @@ const fallbackPlans = [
     amount: 7900,
     currency: 'usd',
     interval: 'month',
+    trialDays: 14,
     isFree: false,
     cta: 'Upgrade to Business',
     perks: ['Everything in Professional', 'Priority onboarding support', 'Higher-touch billing operations', 'Shared finance workflows', 'Future-ready for team expansion'],
@@ -86,6 +88,14 @@ export default function Pricing() {
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600 sm:text-xl">
             The free plan gets the fundamentals in place. Paid plans unlock automated reminders, stronger analytics, and higher-touch billing workflows.
           </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-700">
+              Starter is free forever
+            </span>
+            <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-700">
+              Paid plans include a 14-day free trial
+            </span>
+          </div>
 
           <div className="mt-8 inline-flex items-center rounded-full border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
             <button
@@ -130,6 +140,11 @@ export default function Pricing() {
                   <p className={`text-5xl font-black tracking-tight ${highlighted ? 'text-white' : 'text-slate-900'}`}>
                     {plan.isFree ? 'Free' : formatMoney(displayPrice, plan.currency)}
                   </p>
+                  {!plan.isFree && plan.trialDays > 0 && (
+                    <p className={`mt-2 text-xs font-bold uppercase tracking-wide ${highlighted ? 'text-emerald-300' : 'text-primary-700'}`}>
+                      {plan.trialDays}-day free trial
+                    </p>
+                  )}
                   <p className={`mt-2 text-sm ${highlighted ? 'text-slate-300' : 'text-slate-500'}`}>
                     {plan.isFree
                       ? 'Free forever for early-stage setup.'
