@@ -134,6 +134,27 @@
     @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm;
   }
 
+  .page-reveal > *,
+  .marketing-reveal > section,
+  .marketing-reveal > footer {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes reveal-up {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
   .page-reveal > * {
     animation: reveal-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -190,18 +211,6 @@
   .marketing-reveal > section:nth-of-type(n + 6),
   .marketing-reveal > footer {
     animation-delay: 300ms;
-  }
-}
-
-@keyframes reveal-up {
-  0% {
-    opacity: 0;
-    transform: translateY(14px) scale(0.992);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
