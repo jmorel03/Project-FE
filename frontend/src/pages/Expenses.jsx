@@ -19,7 +19,9 @@ const schema = z.object({
   currency: z.string().default('USD'),
   date: z.string().min(1, 'Date is required'),
   categoryId: z.string().optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
   isBillable: z.boolean().default(false),
+  isReimbursed: z.boolean().default(false),
   notes: z.string().optional(),
 });
 
@@ -34,6 +36,7 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadExpense, setUploadExpense] = useState(null);
@@ -41,8 +44,13 @@ export default function Expenses() {
   const fileInputRef = useRef(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['expenses', { page, search }],
-    queryFn: () => expenseService.list({ page, limit: 20, search: search || undefined }),
+    queryKey: ['expenses', { page, search, statusFilter }],
+    queryFn: () => expenseService.list({
+      page,
+      limit: 20,
+      search: search || undefined,
+      status: statusFilter || undefined,
+    }),
   });
 
   const { data: categories } = useQuery({
@@ -54,7 +62,17 @@ export default function Expenses() {
     resolver: zodResolver(schema),
   });
 
-  const openCreate = () => { setEditing(null); reset({ currency: 'USD', date: format(new Date(), 'yyyy-MM-dd'), isBillable: false }); setOpen(true); };
+  const openCreate = () => {
+    setEditing(null);
+    reset({
+      currency: 'USD',
+      date: format(new Date(), 'yyyy-MM-dd'),
+      status: 'PENDING',
+      isBillable: false,
+      isReimbursed: false,
+    });
+    setOpen(true);
+  };
   const openUpload = (exp) => { setUploadExpense(exp); setReceiptFile(null); setUploadOpen(true); };
   const openEdit = (exp) => {
     setEditing(exp);
@@ -65,7 +83,9 @@ export default function Expenses() {
       currency: exp.currency,
       date: format(new Date(exp.date), 'yyyy-MM-dd'),
       categoryId: exp.categoryId || '',
+      status: exp.status,
       isBillable: exp.isBillable,
+      isReimbursed: exp.isReimbursed,
       notes: exp.notes || '',
     });
     setOpen(true);
@@ -99,9 +119,27 @@ export default function Expenses() {
     onError: (err) => toast.error(err?.response?.data?.error || 'Upload failed'),
   });
 
+  const quickStatusMutation = useMutation({
+    mutationFn: ({ id, payload }) => expenseService.update(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.success('Expense updated');
+    },
+    onError: (err) => toast.error(err?.response?.data?.error || 'Update failed'),
+  });
+
   const expenses = data?.expenses || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / 20);
+  const summary = data?.summary || {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    totalAmount: 0,
+    reimbursedAmount: 0,
+    reimbursedCount: 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -113,9 +151,49 @@ export default function Expenses() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-xs">
-        <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input className="input pl-9" placeholder="Search expenses…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative max-w-xs flex-1">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input className="input pl-9" placeholder="Search expenses…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+        </div>
+        <select
+          className="input max-w-xs"
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+        >
+          <option value="">All statuses</option>
+          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+      </div>
+
+      {/* Workflow Summary */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Pending</p>
+          <p className="mt-1 text-xl font-bold text-amber-900">{summary.pending}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Approved</p>
+          <p className="mt-1 text-xl font-bold text-emerald-900">{summary.approved}</p>
+        </div>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">Rejected</p>
+          <p className="mt-1 text-xl font-bold text-rose-900">{summary.rejected}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Total Spend</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{fmt(summary.totalAmount, 'USD')}</p>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Reimbursed</p>
+          <p className="mt-1 text-lg font-bold text-blue-900">{fmt(summary.reimbursedAmount, 'USD')}</p>
+        </div>
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-700">Reimbursed Count</p>
+          <p className="mt-1 text-xl font-bold text-indigo-900">{summary.reimbursedCount}</p>
+        </div>
       </div>
 
       {/* Table */}
@@ -135,6 +213,7 @@ export default function Expenses() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendor</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Flags</th>
                 <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -156,9 +235,48 @@ export default function Expenses() {
                     ) : <span className="text-xs text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3.5"><Badge status={exp.status} /></td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {exp.isBillable && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Billable</span>}
+                      {exp.isReimbursed && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">Reimbursed</span>}
+                      {!exp.isBillable && !exp.isReimbursed && <span className="text-xs text-gray-400">—</span>}
+                    </div>
+                  </td>
                   <td className="px-6 py-3.5 text-right font-semibold text-gray-800">{fmt(exp.amount, exp.currency)}</td>
                   <td className="px-4 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1 flex-wrap">
+                      {exp.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => quickStatusMutation.mutate({ id: exp.id, payload: { status: 'APPROVED' } })}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => quickStatusMutation.mutate({ id: exp.id, payload: { status: 'REJECTED' } })}
+                            className="text-xs text-amber-600 hover:text-amber-700 px-2 py-1 rounded hover:bg-amber-50"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {exp.status === 'APPROVED' && !exp.isReimbursed && (
+                        <button
+                          onClick={() => quickStatusMutation.mutate({ id: exp.id, payload: { isReimbursed: true } })}
+                          className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
+                        >
+                          Mark Reimbursed
+                        </button>
+                      )}
+                      {exp.isReimbursed && (
+                        <button
+                          onClick={() => quickStatusMutation.mutate({ id: exp.id, payload: { isReimbursed: false } })}
+                          className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
+                        >
+                          Undo Reimbursed
+                        </button>
+                      )}
                       {exp.receiptUrl ? (
                         <a
                           href={exp.receiptUrl}
@@ -262,16 +380,29 @@ export default function Expenses() {
               {['USD', 'EUR', 'GBP', 'CAD', 'AUD'].map((c) => <option key={c}>{c}</option>)}
             </Select>
           </div>
-          <Select label="Category" {...register('categoryId')}>
-            <option value="">Uncategorized</option>
-            {categories?.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-          </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Status" {...register('status')}>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </Select>
+            <Select label="Category" {...register('categoryId')}>
+              <option value="">Uncategorized</option>
+              {categories?.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+            </Select>
+          </div>
           <Input label="Description" placeholder="Optional details" {...register('description')} />
           <Textarea label="Notes" placeholder="Additional notes…" {...register('notes')} />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" className="rounded border-gray-300 text-primary-600" {...register('isBillable')} />
-            This expense is billable to a client
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" className="rounded border-gray-300 text-primary-600" {...register('isBillable')} />
+              This expense is billable to a client
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" className="rounded border-gray-300 text-primary-600" {...register('isReimbursed')} />
+              This expense has been reimbursed
+            </label>
+          </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setOpen(false)} className="btn-secondary">Cancel</button>
             <button type="submit" disabled={isSubmitting || mutation.isPending} className="btn-primary">

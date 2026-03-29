@@ -29,6 +29,9 @@ router.post('/', [
   body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be positive'),
   body('date').isISO8601().withMessage('Valid date is required'),
   body('categoryId').optional({ checkFalsy: true }).isUUID(),
+  body('status').optional().isIn(['PENDING', 'APPROVED', 'REJECTED']),
+  body('isBillable').optional().isBoolean(),
+  body('isReimbursed').optional().isBoolean(),
 ], validate, createExpense);
 
 router.put('/:id', [
@@ -36,6 +39,9 @@ router.put('/:id', [
   body('amount').optional().isFloat({ min: 0.01 }),
   body('date').optional().isISO8601(),
   body('categoryId').optional({ checkFalsy: true }).isUUID(),
+  body('status').optional().isIn(['PENDING', 'APPROVED', 'REJECTED']),
+  body('isBillable').optional().isBoolean(),
+  body('isReimbursed').optional().isBoolean(),
 ], validate, updateExpense);
 
 router.post('/:id/receipt',

@@ -70,7 +70,7 @@ exports.getExpenses = async (req, res, next) => {
       }),
     };
 
-    const [expenses, total] = await Promise.all([
+    const [expenses, total, groupedByStatus, totalAmountAgg, reimbursedAgg] = await Promise.all([
       prisma.expense.findMany({
         where,
         skip,
@@ -79,9 +79,47 @@ exports.getExpenses = async (req, res, next) => {
         include: { category: { select: { id: true, name: true, color: true } } },
       }),
       prisma.expense.count({ where }),
+      prisma.expense.groupBy({
+        by: ['status'],
+        where,
+        _count: { _all: true },
+      }),
+      prisma.expense.aggregate({
+        where,
+        _sum: { amount: true },
+      }),
+      prisma.expense.aggregate({
+        where: { ...where, isReimbursed: true },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
     ]);
 
-    res.json({ expenses, total, page: Number(page), limit: Number(limit) });
+    const statusCounts = {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+    };
+
+    groupedByStatus.forEach((group) => {
+      const key = String(group.status || '').toLowerCase();
+      if (statusCounts[key] !== undefined) {
+        statusCounts[key] = group._count._all;
+      }
+    });
+
+    res.json({
+      expenses,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      summary: {
+        ...statusCounts,
+        totalAmount: Number(totalAmountAgg._sum.amount) || 0,
+        reimbursedAmount: Number(reimbursedAgg._sum.amount) || 0,
+        reimbursedCount: reimbursedAgg._count._all || 0,
+      },
+    });
   } catch (err) {
     next(err);
   }
