@@ -13,6 +13,8 @@ const {
 
 const router = Router();
 
+router.get('/plans/public', getPlans);
+
 router.use(authenticate);
 
 router.get('/plans', getPlans);

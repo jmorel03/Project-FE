@@ -1,136 +1,220 @@
 import { Link } from 'react-router-dom';
-import { CheckCircleIcon, DocumentTextIcon, CreditCardIcon, ReceiptPercentIcon } from '@heroicons/react/24/solid';
+import {
+  BanknotesIcon,
+  BellAlertIcon,
+  ChartBarSquareIcon,
+  CheckCircleIcon,
+  DocumentTextIcon,
+  ReceiptPercentIcon,
+  ShieldCheckIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/solid';
 import PublicNav from '../components/layout/PublicNav';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
-const features = [
+const featureCards = [
   {
     name: 'Professional Invoices',
-    description: 'Create and send beautiful invoices in seconds. Track payment status in real-time.',
+    description: 'Create, send, and update invoices with payment tracking and downloadable PDFs.',
     icon: DocumentTextIcon,
   },
   {
-    name: 'Expense Tracking',
-    description: 'Log expenses with receipts. Categorize and analyze spending patterns effortlessly.',
+    name: 'Reminder Workflows',
+    description: 'Send due-soon and overdue reminders instead of manually chasing every client.',
+    icon: BellAlertIcon,
+  },
+  {
+    name: 'Expense Visibility',
+    description: 'Capture spending with categories, receipts, and clearer monthly reporting.',
     icon: ReceiptPercentIcon,
   },
   {
-    name: 'Client Management',
-    description: 'Keep all your client information organized. Never lose important contact details.',
-    icon: CreditCardIcon,
-  },
-  {
-    name: 'Payment Recording',
-    description: 'Track partial and full payments. Get insights into your cash flow and outstanding invoices.',
-    icon: CheckCircleIcon,
+    name: 'Client Operating System',
+    description: 'Keep client history, invoice status, and collections context in one place.',
+    icon: UserGroupIcon,
   },
 ];
 
+const workflowSteps = [
+  ['Add your client', 'Store contact details once, then reuse them across every invoice and follow-up.'],
+  ['Send the invoice', 'Deliver a clean PDF and track when the invoice moves from draft to sent to paid.'],
+  ['Stay ahead of due dates', 'Use reminders and dashboard follow-up queues to prevent revenue from going stale.'],
+  ['Close the loop', 'Record payment, update reporting, and keep cash flow visibility current.'],
+];
+
 export default function Landing() {
+  useDocumentTitle('Xpensist');
+
   return (
-    <div className="marketing-shell relative overflow-hidden">
-      <div className="pointer-events-none absolute -top-16 -left-16 h-72 w-72 rounded-full bg-cyan-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute top-40 -right-16 h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl" />
+    <div className="marketing-shell overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.15),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.16),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_44%,_#f8fafc_100%)]">
       <PublicNav />
 
-      {/* Hero Section */}
-      <section className="pt-24 pb-20">
-        <div className="marketing-wrap text-center">
-          <span className="hero-chip mb-6">Invoice and expense management in one place</span>
-          <h1 className="text-4xl leading-tight sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mb-6">
-            Run invoicing and expenses
-            <span className="block text-primary-600">from a single dashboard.</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-            Xpensist helps you create invoices, manage clients, record payments, and track expenses with receipt uploads. It is built for straightforward day-to-day operations.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/register"
-              className="px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition inline-block shadow-lg shadow-primary-200"
-            >
-              Start Free Today
-            </Link>
-            <Link
-              to="/login"
-              className="px-8 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-semibold hover:border-slate-400 transition inline-block"
-            >
-              Sign In
-            </Link>
-          </div>
-          <p className="text-sm text-slate-500 mt-4">Use your account to create clients, invoices, and expenses immediately.</p>
-
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            {[
-              ['Invoices', 'Create, send, and track status'],
-              ['Expenses', 'Categorize costs and upload receipts'],
-              ['Dashboard', 'Review revenue and activity'],
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
-                <p className="text-lg font-extrabold text-slate-900">{value}</p>
-                <p className="text-sm text-slate-600">{label}</p>
+      <section className="relative pt-24 pb-20">
+        <div className="pointer-events-none absolute -top-10 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-200/40 blur-3xl" />
+        <div className="marketing-wrap relative">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <span className="hero-chip mb-6">From first invoice to paid invoice, without the spreadsheet drift</span>
+              <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                The billing cockpit for freelancers and operators who hate chasing money.
+              </h1>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
+                Xpensist combines invoicing, expense tracking, reminders, and dashboard guidance so the admin side of your business stops stealing attention from the actual work.
+              </p>
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:bg-primary-700">
+                  Start Free Today
+                </Link>
+                <Link to="/pricing" className="rounded-xl border border-slate-300 px-8 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                  See Plans
+                </Link>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
-        <div className="marketing-wrap">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-slate-900 mb-3">
-            Core Capabilities
-          </h2>
-          <p className="text-center text-slate-600 mb-12 max-w-2xl mx-auto">
-            The current platform focuses on practical essentials: invoice workflows, client records, expense tracking, and payment visibility.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
-            {features.map(({ name, description, icon: Icon }) => (
-              <div key={name} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 hover:bg-white hover:shadow-lg transition">
-                <div className="mb-4 inline-flex rounded-xl bg-primary-100 p-3">
-                  <Icon className="w-7 h-7 text-primary-700" />
+              <div className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-3">
+                {[
+                  ['Invoices', 'Create and track collections'],
+                  ['Reminders', 'Stay ahead of due dates'],
+                  ['Reporting', 'See revenue and spend clearly'],
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-2xl border border-slate-200 bg-white/80 px-5 py-4 shadow-sm backdrop-blur">
+                    <p className="text-lg font-extrabold text-slate-900">{value}</p>
+                    <p className="text-sm text-slate-600">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[32px] border border-slate-200 bg-slate-900 p-6 text-white shadow-2xl">
+              <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Collections Snapshot</p>
+                    <h2 className="mt-2 text-2xl font-bold">Move from reactive to deliberate.</h2>
+                  </div>
+                  <ChartBarSquareIcon className="h-8 w-8 text-emerald-300" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">{name}</h3>
-                <p className="text-slate-600 leading-relaxed">{description}</p>
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white px-4 py-4 text-slate-900">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Due Soon</p>
+                    <p className="mt-2 text-3xl font-black">04</p>
+                    <p className="mt-1 text-sm text-slate-500">Invoices worth following up before they go stale.</p>
+                  </div>
+                  <div className="rounded-2xl bg-emerald-400 px-4 py-4 text-slate-900">
+                    <p className="text-xs uppercase tracking-wide text-slate-700">Forecast</p>
+                    <p className="mt-2 text-3xl font-black">$12.4k</p>
+                    <p className="mt-1 text-sm text-slate-700">Expected collections over the next 30 days.</p>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-300">At-risk invoices</span>
+                    <span className="font-semibold text-white">2 need action now</span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-white/10">
+                    <div className="h-2 w-2/3 rounded-full bg-emerald-300" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-6">
+        <div className="marketing-wrap grid gap-4 rounded-[28px] border border-slate-200 bg-white/90 px-6 py-6 shadow-sm md:grid-cols-4">
+          {[
+            ['Faster Collections', 'Reminder workflows and follow-up visibility'],
+            ['Cleaner Reporting', 'Revenue, expenses, and payment activity in one place'],
+            ['Operator-Friendly UX', 'Built for small teams that need clarity fast'],
+            ['Trust by Design', 'Professional invoices, secure auth, and structured records'],
+          ].map(([title, text]) => (
+            <div key={title}>
+              <p className="text-sm font-bold uppercase tracking-wide text-slate-900">{title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="features" className="py-20">
+        <div className="marketing-wrap">
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-primary-700">Core Platform</p>
+            <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">Everything needed to move work from draft to paid.</h2>
+            <p className="mt-4 text-lg text-slate-600">The current product focuses on the jobs that directly affect cash flow: invoice creation, reminders, payment tracking, client history, and expense visibility.</p>
+          </div>
+
+          <div className="mt-10 grid gap-7 md:grid-cols-2">
+            {featureCards.map(({ name, description, icon: Icon }) => (
+              <div key={name} className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                <div className="inline-flex rounded-2xl bg-primary-100 p-3 text-primary-700">
+                  <Icon className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-xl font-semibold text-slate-900">{name}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Product Summary */}
-      <section className="py-14">
-        <div className="marketing-wrap">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold tracking-wide text-slate-500 text-center mb-3">CURRENT PRODUCT SCOPE</p>
-            <p className="mx-auto max-w-3xl text-center text-slate-600 leading-relaxed">
-              Xpensist currently includes authentication, client management, invoice creation and tracking, payment recording,
-              expense categories, receipt uploads, and dashboard reporting. Additional subscription billing and advanced billing
-              automation can be introduced as next-stage features.
-            </p>
+      <section className="border-y border-slate-200/80 bg-white py-20">
+        <div className="marketing-wrap grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700">Workflow</p>
+            <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">A better operating rhythm than create, forget, chase, repeat.</h2>
+            <p className="mt-4 text-lg text-slate-600">Xpensist is most valuable when it keeps the boring but important work from falling through the cracks.</p>
+          </div>
+          <div className="space-y-4">
+            {workflowSteps.map(([title, text], index) => (
+              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary-700">Step {index + 1}</p>
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-primary-600">
-        <div className="marketing-wrap text-center text-white">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to simplify your invoicing?</h2>
-          <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
-            Start with the current core workflow: clients, invoices, expenses, and reporting.
-          </p>
-          <Link
-            to="/register"
-            className="inline-block px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg"
-          >
-            Get Started Free
-          </Link>
+      <section className="py-20">
+        <div className="marketing-wrap grid gap-8 lg:grid-cols-3">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+            <ShieldCheckIcon className="h-8 w-8 text-emerald-600" />
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">Built for trust</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">Secure authentication, structured invoice records, and support-ready contact flows create the baseline confidence people expect from a finance tool.</p>
+          </div>
+          <div className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+            <BanknotesIcon className="h-8 w-8 text-primary-600" />
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">Built for collections</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">The dashboard now surfaces due-soon, overdue, and at-risk invoices so follow-up becomes a planned routine instead of reactive cleanup.</p>
+          </div>
+          <div className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+            <CheckCircleIcon className="h-8 w-8 text-cyan-600" />
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">Built to grow with you</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">Start with invoicing and expenses. Add subscription upgrades when your operation needs stronger reminders, analytics, and support.</p>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <p>&copy; 2026 Xpensist. All rights reserved.</p>
+      <section className="pb-20">
+        <div className="marketing-wrap rounded-[32px] bg-primary-600 px-8 py-12 text-center text-white shadow-xl shadow-primary-200">
+          <h2 className="text-3xl font-bold sm:text-4xl">Run the admin side of the business like it matters.</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-primary-100">Create invoices, track expenses, follow up on payments, and give yourself a dashboard that actually tells you what to do next.</p>
+          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+            <Link to="/register" className="rounded-xl bg-white px-8 py-3 text-sm font-semibold text-primary-700 transition hover:bg-slate-100">
+              Create Free Account
+            </Link>
+            <Link to="/pricing" className="rounded-xl border border-white/40 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+              Compare Plans
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-slate-900 px-4 py-8 text-slate-400 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl text-center">
+          <p>&copy; 2026 Xpensist. Invoicing and expense operations, without the spreadsheet drift.</p>
         </div>
       </footer>
     </div>

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -12,6 +13,8 @@ const schema = z.object({
 });
 
 export default function Login() {
+  useDocumentTitle('Xpensist | Login Page');
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({

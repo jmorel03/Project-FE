@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const schema = z
   .object({
@@ -21,6 +22,8 @@ const schema = z
   });
 
 export default function Register() {
+  useDocumentTitle('Xpensist | Register');
+
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
@@ -64,7 +67,7 @@ export default function Register() {
               <Input label="First name" placeholder="Jane" error={errors.firstName?.message} {...register('firstName')} />
               <Input label="Last name" placeholder="Smith" error={errors.lastName?.message} {...register('lastName')} />
             </div>
-            <Input label="Company name" placeholder="Acme Inc. (optional)" error={errors.companyName?.message} {...register('companyName')} />
+            <Input label="Company name" placeholder="company inc. (optional)" error={errors.companyName?.message} {...register('companyName')} />
             <Input label="Email address" type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
             <Input label="Password" type="password" placeholder="Min. 8 characters" error={errors.password?.message} {...register('password')} />
             <Input label="Confirm password" type="password" placeholder="Re-enter password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />

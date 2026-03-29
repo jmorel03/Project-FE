@@ -96,6 +96,118 @@ exports.sendInvoiceEmail = async ({ invoice, client, user, pdfBuffer }) => {
   });
 };
 
+exports.sendInvoiceReminderEmail = async ({ invoice, client, user, reminderType, balanceDue, daysUntilDue }) => {
+  const transporter = createTransport();
+
+  const fromName = user.companyName || `${user.firstName} ${user.lastName}`;
+  const dueDate = format(new Date(invoice.dueDate), 'MMMM dd, yyyy');
+  const amountDue = new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency }).format(balanceDue);
+
+  const reminderCopy = {
+    MANUAL: {
+      title: 'Invoice Reminder',
+      intro: `This is a quick reminder that invoice ${invoice.invoiceNumber} is still open.`,
+    },
+    UPCOMING: {
+      title: 'Upcoming Invoice Due Date',
+      intro: `Just a heads up that invoice ${invoice.invoiceNumber} is due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}.`,
+    },
+    DUE_TODAY: {
+      title: 'Invoice Due Today',
+      intro: `Invoice ${invoice.invoiceNumber} is due today.`,
+    },
+    OVERDUE: {
+      title: 'Invoice Overdue',
+      intro: `Invoice ${invoice.invoiceNumber} is now overdue.`,
+    },
+    FINAL_NOTICE: {
+      title: 'Final Invoice Notice',
+      intro: `This is a final reminder that invoice ${invoice.invoiceNumber} remains unpaid.`,
+    },
+  }[reminderType] || {
+    title: 'Invoice Reminder',
+    intro: `Invoice ${invoice.invoiceNumber} is still awaiting payment.`,
+  };
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; margin: 0; padding: 0; background: #f9fafb; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
+        .header { background: #0f766e; padding: 32px; color: #fff; }
+        .header h1 { margin: 0 0 4px; font-size: 22px; }
+        .header p { margin: 0; color: #ccfbf1; font-size: 14px; }
+        .body { padding: 32px; }
+        .amount-box { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0; }
+        .amount-box .label { font-size: 12px; color: #0f766e; text-transform: uppercase; letter-spacing: 0.05em; }
+        .amount-box .amount { font-size: 36px; font-weight: 700; color: #115e59; }
+        .details { border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+        .detail-row .label { color: #6b7280; }
+        .footer { background: #f9fafb; padding: 20px 32px; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>${reminderCopy.title}</h1>
+          <p>${fromName}</p>
+        </div>
+        <div class="body">
+          <p>Hi ${client.name},</p>
+          <p>${reminderCopy.intro}</p>
+          <p>Please review the balance below and arrange payment if it has not already been sent.</p>
+
+          <div class="amount-box">
+            <div class="label">Balance Due</div>
+            <div class="amount">${amountDue}</div>
+          </div>
+
+          <div class="details">
+            <div class="detail-row">
+              <span class="label">Invoice No.</span>
+              <span><strong>${invoice.invoiceNumber}</strong></span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Due Date</span>
+              <span>${dueDate}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Current Status</span>
+              <span>${invoice.status}</span>
+            </div>
+          </div>
+
+          ${invoice.notes ? `<p style="background:#f3f4f6;padding:12px;border-radius:6px;font-size:13px;">${invoice.notes}</p>` : ''}
+        </div>
+        <div class="footer">
+          <p>This reminder was sent by ${fromName} via Xpensist.</p>
+          <p>If you have questions, reply directly to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const subjectMap = {
+    MANUAL: `Reminder: invoice ${invoice.invoiceNumber} from ${fromName}`,
+    UPCOMING: `Upcoming due date for invoice ${invoice.invoiceNumber}`,
+    DUE_TODAY: `Invoice ${invoice.invoiceNumber} is due today`,
+    OVERDUE: `Invoice ${invoice.invoiceNumber} is overdue`,
+    FINAL_NOTICE: `Final notice for invoice ${invoice.invoiceNumber}`,
+  };
+
+  await transporter.sendMail({
+    from: `"${process.env.FROM_NAME || fromName}" <${process.env.FROM_EMAIL}>`,
+    to: `"${client.name}" <${client.email}>`,
+    subject: subjectMap[reminderType] || `Reminder for invoice ${invoice.invoiceNumber}`,
+    html,
+  });
+};
+
 exports.sendSupportEmail = async ({ fromName, fromEmail, subject, message }) => {
   const transporter = createTransport();
   const supportEmail = process.env.SUPPORT_EMAIL || process.env.FROM_EMAIL;

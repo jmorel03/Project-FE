@@ -33,6 +33,7 @@ model User {
   refreshTokens RefreshToken[]
   clients       Client[]
   invoices      Invoice[]
+  invoiceReminders InvoiceReminder[]
   expenses      Expense[]
   categories    ExpenseCategory[]
   subscriptions BillingSubscription[]
@@ -83,6 +84,14 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum InvoiceReminderType {
+  MANUAL
+  UPCOMING
+  DUE_TODAY
+  OVERDUE
+  FINAL_NOTICE
+}
+
 model Invoice {
   id             String        @id @default(uuid())
   userId         String
@@ -110,6 +119,7 @@ model Invoice {
   client   Client        @relation(fields: [clientId], references: [id])
   items    InvoiceItem[]
   payments Payment[]
+  reminders InvoiceReminder[]
 }
 
 model InvoiceItem {
@@ -135,6 +145,22 @@ model Payment {
   createdAt DateTime @default(now())
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model InvoiceReminder {
+  id        String              @id @default(uuid())
+  invoiceId String
+  userId    String
+  type      InvoiceReminderType @default(MANUAL)
+  subject   String?
+  sentAt    DateTime            @default(now())
+  createdAt DateTime            @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, sentAt])
+  @@index([userId, sentAt])
 }
 
 // ─── Expenses ────────────────────────────────────────────────────────────────

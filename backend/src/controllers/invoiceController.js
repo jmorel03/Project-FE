@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const { generateInvoicePdf } = require('../services/pdfService');
 const { sendInvoiceEmail } = require('../services/emailService');
+const { inferReminderType, sendReminderForInvoice } = require('../services/invoiceReminderService');
 
 // Generates next invoice number like INV-0001
 async function nextInvoiceNumber(userId) {
@@ -73,6 +74,7 @@ exports.getInvoice = async (req, res, next) => {
         client: true,
         items: { orderBy: { order: 'asc' } },
         payments: { orderBy: { paidAt: 'desc' } },
+        reminders: { orderBy: { sentAt: 'desc' }, take: 5 },
       },
     });
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
@@ -278,6 +280,55 @@ exports.downloadPdf = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoiceNumber}.pdf"`);
     res.send(pdfBuffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.sendReminder = async (req, res, next) => {
+  try {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: {
+        client: true,
+        reminders: { orderBy: { sentAt: 'desc' }, take: 5 },
+      },
+    });
+
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    const type = req.body?.type || inferReminderType(invoice);
+
+    const result = await sendReminderForInvoice({
+      invoice,
+      user,
+      type,
+      force: Boolean(req.body?.force),
+    });
+
+    if (result.skipped) {
+      return res.status(409).json({
+        error: 'A reminder of this type was already sent today',
+        reminderType: result.reminderType,
+      });
+    }
+
+    const refreshedInvoice = await prisma.invoice.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: {
+        client: true,
+        items: { orderBy: { order: 'asc' } },
+        payments: { orderBy: { paidAt: 'desc' } },
+        reminders: { orderBy: { sentAt: 'desc' }, take: 5 },
+      },
+    });
+
+    res.json({
+      message: 'Reminder sent successfully',
+      reminderType: result.reminderType,
+      invoice: refreshedInvoice,
+    });
   } catch (err) {
     next(err);
   }

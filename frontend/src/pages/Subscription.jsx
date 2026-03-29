@@ -2,6 +2,7 @@
 import { ArrowTopRightOnSquareIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import { billingService } from '../services/api';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 function formatMoney(amount, currency = 'usd') {
   if (amount == null) return '-';
@@ -11,7 +12,16 @@ function formatMoney(amount, currency = 'usd') {
   }).format(amount / 100);
 }
 
+const comparisonRows = [
+  { label: 'Invoices', key: 'invoices' },
+  { label: 'Team Members', key: 'teamMembers' },
+  { label: 'Automation', key: 'automation' },
+  { label: 'Reporting', key: 'reporting' },
+];
+
 export default function Subscription() {
+  useDocumentTitle('Xpensist | Subscription');
+
   const { data: plansData, isLoading: plansLoading } = useQuery({
     queryKey: ['billing-plans'],
     queryFn: billingService.getPlans,
@@ -186,6 +196,17 @@ export default function Subscription() {
                     {plan.isFree ? 'Free' : formatMoney(plan.amount, plan.currency)}
                     {plan.interval ? <span className="text-sm font-normal text-gray-500"> / {plan.interval}</span> : null}
                   </p>
+                  {plan.tagline && <p className="text-sm text-gray-500">{plan.tagline}</p>}
+                  {plan.perks?.length > 0 && (
+                    <div className="space-y-2 text-sm text-gray-600">
+                      {plan.perks.slice(0, 4).map((perk) => (
+                        <div key={perk} className="flex items-start gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary-500" />
+                          <span>{perk}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {isCurrent ? (
                     <div className="mt-auto text-sm text-center text-primary-700 font-medium py-2">Your current plan</div>
                   ) : plan.isFree ? (
@@ -206,6 +227,34 @@ export default function Subscription() {
           </div>
         )}
       </div>
+
+      {plans.length > 0 && (
+        <div className="card p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Plan Comparison</h2>
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 font-semibold text-gray-500">Feature</th>
+                  {plans.map((plan) => (
+                    <th key={plan.key} className="px-4 py-3 font-semibold text-gray-900">{plan.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {comparisonRows.map((row) => (
+                  <tr key={row.key}>
+                    <td className="px-4 py-3 font-medium text-gray-600">{row.label}</td>
+                    {plans.map((plan) => (
+                      <td key={`${plan.key}-${row.key}`} className="px-4 py-3 text-gray-800">{plan.limits?.[row.key] || 'Included'}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

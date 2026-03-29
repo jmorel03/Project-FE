@@ -9,6 +9,7 @@ import { invoiceService, clientService } from '../services/api';
 import Input, { Select, Textarea } from '../components/ui/Input';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const itemSchema = z.object({
   description: z.string().min(1, 'Required'),
@@ -35,6 +36,8 @@ export default function InvoiceCreate() {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
+
+  useDocumentTitle(isEditing ? 'Xpensist | Edit Invoice' : 'Xpensist | New Invoice');
 
   const { data: clientsData } = useQuery({
     queryKey: ['clients-all'],

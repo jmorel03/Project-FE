@@ -97,6 +97,7 @@ export const invoiceService = {
   update: (id, data) => api.put(`/invoices/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/invoices/${id}`),
   send: (id) => api.post(`/invoices/${id}/send`).then((r) => r.data),
+  sendReminder: (id, data) => api.post(`/invoices/${id}/remind`, data).then((r) => r.data),
   recordPayment: (id, data) => api.post(`/invoices/${id}/payments`, data).then((r) => r.data),
   pdfUrl: (id) => `${import.meta.env.VITE_API_URL || '/api'}/invoices/${id}/pdf`,
 };
@@ -123,9 +124,11 @@ export const dashboardService = {
   stats: () => api.get('/dashboard/stats').then((r) => r.data),
   revenue: () => api.get('/dashboard/revenue').then((r) => r.data),
   activity: () => api.get('/dashboard/activity').then((r) => r.data),
+  insights: () => api.get('/dashboard/insights').then((r) => r.data),
 };
 
 export const billingService = {
+  getPublicPlans: () => api.get('/billing/plans/public').then((r) => r.data),
   getPlans: () => api.get('/billing/plans').then((r) => r.data),
   getSummary: () => api.get('/billing/summary').then((r) => r.data),
   createCheckoutSession: (planKey) => api.post('/billing/checkout-session', { planKey }).then((r) => r.data),

@@ -9,11 +9,12 @@ import { invoiceService } from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Input, { Select } from '../components/ui/Input';
-import { format } from 'date-fns';
+import { differenceInCalendarDays, format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 function fmt(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
@@ -31,11 +32,14 @@ export default function InvoiceView() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => invoiceService.get(id),
   });
+
+  useDocumentTitle(invoice?.invoiceNumber ? `Xpensist | ${invoice.invoiceNumber}` : 'Xpensist | Invoice Details');
 
   const sendMutation = useMutation({
     mutationFn: () => invoiceService.send(id),
@@ -43,9 +47,22 @@ export default function InvoiceView() {
     onError: (err) => toast.error(err?.response?.data?.error || 'Send failed'),
   });
 
+  const reminderMutation = useMutation({
+    mutationFn: (type) => invoiceService.sendReminder(id, { type }),
+    onSuccess: (data) => {
+      qc.setQueryData(['invoice', id], data.invoice);
+      toast.success('Reminder sent');
+    },
+    onError: (err) => toast.error(err?.response?.data?.error || 'Reminder failed'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => invoiceService.delete(id),
-    onSuccess: () => { toast.success('Invoice deleted'); navigate('/invoices'); },
+    onSuccess: () => {
+      setDeleteOpen(false);
+      toast.success('Invoice deleted');
+      navigate('/invoices');
+    },
     onError: (err) => toast.error(err?.response?.data?.error || 'Delete failed'),
   });
 
@@ -83,6 +100,15 @@ export default function InvoiceView() {
   if (!invoice) return <p className="text-gray-500">Invoice not found.</p>;
 
   const balance = Number(invoice.total) - Number(invoice.amountPaid);
+  const daysUntilDue = differenceInCalendarDays(new Date(invoice.dueDate), new Date());
+  const reminderType = daysUntilDue > 0 ? 'UPCOMING' : daysUntilDue === 0 ? 'DUE_TODAY' : daysUntilDue <= -14 ? 'FINAL_NOTICE' : 'OVERDUE';
+  const reminderLabel = reminderType === 'UPCOMING'
+    ? 'Send Upcoming Reminder'
+    : reminderType === 'DUE_TODAY'
+      ? 'Send Due Today Reminder'
+      : reminderType === 'FINAL_NOTICE'
+        ? 'Send Final Notice'
+        : 'Send Overdue Reminder';
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -106,6 +132,14 @@ export default function InvoiceView() {
                 <PaperAirplaneIcon className="w-4 h-4" />
                 {sendMutation.isPending ? 'Sending…' : 'Send Email'}
               </button>
+              <button
+                onClick={() => reminderMutation.mutate(reminderType)}
+                disabled={reminderMutation.isPending}
+                className="btn-secondary text-xs py-1.5 px-3"
+              >
+                <PaperAirplaneIcon className="w-4 h-4" />
+                {reminderMutation.isPending ? 'Sending…' : reminderLabel}
+              </button>
               <button onClick={() => setPaymentOpen(true)} className="btn-primary text-xs py-1.5 px-3">
                 <BanknotesIcon className="w-4 h-4" /> Record Payment
               </button>
@@ -115,7 +149,7 @@ export default function InvoiceView() {
             <PencilIcon className="w-4 h-4" /> Edit
           </Link>
           <button
-            onClick={() => { if (confirm('Delete this invoice?')) deleteMutation.mutate(); }}
+            onClick={() => setDeleteOpen(true)}
             className="btn-danger text-xs py-1.5 px-3"
           >
             <TrashIcon className="w-4 h-4" />
@@ -250,6 +284,23 @@ export default function InvoiceView() {
               </div>
             </div>
           )}
+
+          {invoice.reminders?.length > 0 && (
+            <div className="border-t border-gray-100 pt-6">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Reminder History</p>
+              <div className="space-y-2">
+                {invoice.reminders.map((reminder) => (
+                  <div key={reminder.id} className="flex items-center justify-between text-sm">
+                    <div>
+                      <span className="text-gray-700">{reminder.type.replaceAll('_', ' ')}</span>
+                      <span className="ml-2 text-gray-400">{format(new Date(reminder.sentAt), 'MMM dd, yyyy h:mm a')}</span>
+                    </div>
+                    <span className="text-xs font-medium uppercase tracking-wide text-primary-700">Sent</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -274,6 +325,32 @@ export default function InvoiceView() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete Invoice" size="sm">
+        <div className="space-y-5">
+          <p className="text-sm text-gray-600">
+            Are you sure you want to delete <span className="font-semibold text-gray-900">{invoice.invoiceNumber}</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleteMutation.isPending}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="btn-danger"
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete Invoice'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

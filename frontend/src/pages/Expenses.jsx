@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const schema = z.object({
   vendor: z.string().min(1, 'Vendor is required'),
@@ -27,6 +28,8 @@ function fmt(amount, currency = 'USD') {
 }
 
 export default function Expenses() {
+  useDocumentTitle('Xpensist | Expenses');
+
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);

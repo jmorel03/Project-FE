@@ -4,7 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const {
   getInvoices, getInvoice, createInvoice, updateInvoice, deleteInvoice,
-  sendInvoice, recordPayment, downloadPdf,
+  sendInvoice, recordPayment, downloadPdf, sendReminder,
 } = require('../controllers/invoiceController');
 
 const router = Router();
@@ -32,6 +32,10 @@ router.put('/:id', [
 router.delete('/:id', param('id').isUUID(), validate, deleteInvoice);
 
 router.post('/:id/send', param('id').isUUID(), validate, sendInvoice);
+router.post('/:id/remind', [
+  param('id').isUUID(),
+  body('type').optional().isIn(['MANUAL', 'UPCOMING', 'DUE_TODAY', 'OVERDUE', 'FINAL_NOTICE']),
+], validate, sendReminder);
 
 router.post('/:id/payments', [
   param('id').isUUID(),

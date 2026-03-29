@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -23,6 +24,8 @@ const schema = z.object({
 });
 
 export default function Clients() {
+  useDocumentTitle('Xpensist | Clients');
+
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -138,7 +141,7 @@ export default function Clients() {
         <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input label="Full Name *" placeholder="Jane Smith" error={errors.name?.message} {...register('name')} />
-            <Input label="Company" placeholder="Acme Inc." {...register('company')} />
+            <Input label="Company" placeholder="company inc." {...register('company')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Email" type="email" placeholder="jane@acme.com" error={errors.email?.message} {...register('email')} />

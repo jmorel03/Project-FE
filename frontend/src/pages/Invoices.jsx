@@ -6,6 +6,7 @@ import { invoiceService } from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const STATUSES = ['', 'DRAFT', 'SENT', 'VIEWED', 'PAID', 'PARTIAL', 'OVERDUE', 'CANCELLED'];
 
@@ -14,6 +15,8 @@ function fmt(amount, currency = 'USD') {
 }
 
 export default function Invoices() {
+  useDocumentTitle('Xpensist | Invoices');
+
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');

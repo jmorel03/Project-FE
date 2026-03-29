@@ -7,6 +7,59 @@ const PLAN_PRICE_IDS = {
   business: process.env.STRIPE_PRICE_BUSINESS || '',
 };
 
+const PLAN_DETAILS = {
+  starter: {
+    tagline: 'For solo operators getting their system in place.',
+    cta: 'Start Free',
+    perks: [
+      'Up to 5 invoices per month',
+      'Basic client and expense tracking',
+      'PDF invoice export',
+      'Email support',
+    ],
+    limits: {
+      invoices: '5 / month',
+      teamMembers: '1 seat',
+      automation: 'Manual only',
+      reporting: 'Basic',
+    },
+  },
+  professional: {
+    tagline: 'For growing freelancers and service businesses.',
+    cta: 'Upgrade to Professional',
+    perks: [
+      'Unlimited invoices and clients',
+      'Automatic invoice reminder workflows',
+      'Advanced dashboard insights',
+      'Priority support',
+      'Receipt uploads and organization',
+    ],
+    limits: {
+      invoices: 'Unlimited',
+      teamMembers: '1 seat',
+      automation: 'Reminders and workflows',
+      reporting: 'Advanced',
+    },
+  },
+  business: {
+    tagline: 'For operators who need admin control and premium support.',
+    cta: 'Upgrade to Business',
+    perks: [
+      'Everything in Professional',
+      'Priority onboarding support',
+      'Higher-touch billing operations',
+      'Shared finance workflows',
+      'Future-ready for team expansion',
+    ],
+    limits: {
+      invoices: 'Unlimited',
+      teamMembers: 'Up to 5 seats',
+      automation: 'Advanced',
+      reporting: 'Executive',
+    },
+  },
+};
+
 const getStripe = () => {
   if (!process.env.STRIPE_SECRET_KEY) {
     return null;
@@ -135,12 +188,13 @@ exports.getPlans = async (req, res, next) => {
               currency: price.currency,
               interval: price.recurring?.interval || null,
               isFree: false,
+              ...PLAN_DETAILS[key],
             };
           }),
         )
       : [];
 
-    const allPlans = [STATIC_FREE_PLAN, ...stripePlans].sort(
+    const allPlans = [{ ...STATIC_FREE_PLAN, ...PLAN_DETAILS.starter }, ...stripePlans].sort(
       (a, b) => PLAN_ORDER.indexOf(a.key) - PLAN_ORDER.indexOf(b.key),
     );
 

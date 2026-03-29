@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { authService, supportService } from '../services/api';
 import Input, { Select } from '../components/ui/Input';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -33,6 +34,8 @@ const supportSchema = z.object({
 });
 
 export default function Settings() {
+  useDocumentTitle('Xpensist | Settings');
+
   const { user, updateUser } = useAuth();
 
   const {
