@@ -7,6 +7,19 @@ function parseCsv(value) {
     .filter(Boolean);
 }
 
+function canonicalizeEmail(email) {
+  const raw = String(email || '').trim().replace(/^['\"]|['\"]$/g, '').toLowerCase();
+  const [local, domain] = raw.split('@');
+  if (!local || !domain) return raw;
+
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const localBase = local.split('+')[0].replace(/\./g, '');
+    return `${localBase}@gmail.com`;
+  }
+
+  return raw;
+}
+
 exports.requireAdmin = async (req, res, next) => {
   try {
     if (!req.userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -18,10 +31,10 @@ exports.requireAdmin = async (req, res, next) => {
 
     if (!user) return res.status(401).json({ error: 'User not found' });
 
-    const adminEmails = parseCsv(process.env.ADMIN_EMAILS);
+    const adminEmails = parseCsv(process.env.ADMIN_EMAILS).map(canonicalizeEmail);
     const adminUserIds = parseCsv(process.env.ADMIN_USER_IDS);
 
-    const isAdmin = adminEmails.includes(String(user.email || '').toLowerCase())
+    const isAdmin = adminEmails.includes(canonicalizeEmail(user.email))
       || adminUserIds.includes(String(user.id || '').toLowerCase());
 
     if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });

@@ -10,6 +10,19 @@ function parseCsv(value) {
     .filter(Boolean);
 }
 
+function canonicalizeEmail(email) {
+  const raw = String(email || '').trim().replace(/^['\"]|['\"]$/g, '').toLowerCase();
+  const [local, domain] = raw.split('@');
+  if (!local || !domain) return raw;
+
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const localBase = local.split('+')[0].replace(/\./g, '');
+    return `${localBase}@gmail.com`;
+  }
+
+  return raw;
+}
+
 function parseTotpSecrets(value) {
   const map = new Map();
   String(value || '')
@@ -20,7 +33,7 @@ function parseTotpSecrets(value) {
       const [email, secret] = pair.split(':');
       if (email && secret) {
         map.set(
-          email.trim().replace(/^['\"]|['\"]$/g, '').toLowerCase(),
+          canonicalizeEmail(email),
           secret.trim().replace(/^['\"]|['\"]$/g, ''),
         );
       }
@@ -29,10 +42,10 @@ function parseTotpSecrets(value) {
 }
 
 function isAdminUser(user) {
-  const adminEmails = parseCsv(process.env.ADMIN_EMAILS);
+  const adminEmails = parseCsv(process.env.ADMIN_EMAILS).map(canonicalizeEmail);
   const adminUserIds = parseCsv(process.env.ADMIN_USER_IDS);
 
-  return adminEmails.includes(String(user.email || '').toLowerCase())
+  return adminEmails.includes(canonicalizeEmail(user.email))
     || adminUserIds.includes(String(user.id || '').toLowerCase());
 }
 
@@ -48,7 +61,7 @@ exports.adminLogin = async (req, res, next) => {
   try {
     const { email, password, totp } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email: String(email || '').toLowerCase() } });
+    const user = await prisma.user.findUnique({ where: { email: canonicalizeEmail(email) } });
     if (!user) return res.status(401).json({ error: 'Invalid admin credentials' });
     if (user.isSuspended) return res.status(403).json({ error: 'Account suspended' });
 
@@ -58,7 +71,7 @@ exports.adminLogin = async (req, res, next) => {
     if (!isAdminUser(user)) return res.status(403).json({ error: 'Admin access required' });
 
     const totpSecrets = parseTotpSecrets(process.env.ADMIN_TOTP_SECRETS);
-    const secret = totpSecrets.get(String(user.email || '').toLowerCase());
+    const secret = totpSecrets.get(canonicalizeEmail(user.email));
 
     if (!secret) {
       return res.status(503).json({ error: 'TOTP is not configured for this admin account' });
