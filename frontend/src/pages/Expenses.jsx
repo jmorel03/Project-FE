@@ -139,6 +139,8 @@ export default function Expenses() {
     totalAmount: 0,
     reimbursedAmount: 0,
     reimbursedCount: 0,
+    needsReimbursementAmount: 0,
+    needsReimbursementCount: 0,
   };
 
   return (
@@ -190,9 +192,10 @@ export default function Expenses() {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Reimbursed</p>
           <p className="mt-1 text-lg font-bold text-blue-900">{fmt(summary.reimbursedAmount, 'USD')}</p>
         </div>
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-700">Reimbursed Count</p>
-          <p className="mt-1 text-xl font-bold text-indigo-900">{summary.reimbursedCount}</p>
+        <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700">Needs Reimbursement</p>
+          <p className="mt-1 text-lg font-bold text-orange-900">{fmt(summary.needsReimbursementAmount, 'USD')}</p>
+          <p className="mt-1 text-[11px] font-medium text-orange-700">{summary.needsReimbursementCount} approved expense(s)</p>
         </div>
       </div>
 
