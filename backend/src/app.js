@@ -68,8 +68,16 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Admin Subdomain Static Panel ───────────────────────────────────────────
-const adminPanelDir = path.resolve(__dirname, '../../admin-panel');
-const hasAdminPanel = fs.existsSync(path.join(adminPanelDir, 'index.html'));
+const adminPanelCandidates = [
+  path.resolve(__dirname, '../admin-panel'),
+  path.resolve(__dirname, '../../admin-panel'),
+  path.resolve(process.cwd(), 'admin-panel'),
+];
+
+const adminPanelDir = adminPanelCandidates.find((candidate) =>
+  fs.existsSync(path.join(candidate, 'index.html')),
+);
+const hasAdminPanel = Boolean(adminPanelDir);
 let adminHost = '';
 
 try {

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xpensist Admin Panel</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <h1>Xpensist Admin Panel</h1>
+      <div class="top-actions">
+        <span id="adminEmail" class="muted"></span>
+        <button id="logoutBtn" class="btn ghost" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section id="loginCard" class="card">
+      <h2>Admin Sign In</h2>
+      <p class="muted">This panel is for allowlisted owner/admin accounts only.</p>
+      <form id="loginForm" class="form-grid">
+        <label>
+          API Base URL
+          <input id="apiBase" type="text" placeholder="https://api.yourdomain.com/api" required />
+        </label>
+        <label>
+          Email
+          <input id="email" type="email" placeholder="owner@yourdomain.com" required />
+        </label>
+        <label>
+          Password
+          <input id="password" type="password" placeholder="Your password" required />
+        </label>
+        <label>
+          TOTP Code
+          <input id="totp" type="text" inputmode="numeric" pattern="[0-9]{6,8}" placeholder="123456" required />
+        </label>
+        <button class="btn primary" type="submit">Sign In</button>
+      </form>
+      <p id="loginError" class="error"></p>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <p id="notice" class="notice hidden"></p>
+      <div class="grid metrics" id="metrics"></div>
+
+      <div class="card">
+        <div class="row">
+          <h2>Users</h2>
+          <div class="row gap-sm">
+            <input id="searchInput" type="text" placeholder="Search name, email, company" />
+            <button id="searchBtn" class="btn" type="button">Search</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Company</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+        <p id="usersMeta" class="muted"></p>
+      </div>
+    </section>
+
+    <div id="actionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <div class="modal-panel card">
+        <h3 id="modalTitle"></h3>
+        <p id="modalMessage" class="muted"></p>
+        <div id="modalInputWrap" class="hidden">
+          <label>
+            <span id="modalInputLabel">Details</span>
+            <input id="modalInput" type="text" />
+          </label>
+        </div>
+        <div id="modalOutputWrap" class="hidden">
+          <label>
+            Reset URL
+            <input id="modalOutput" type="text" readonly />
+          </label>
+          <button id="copyOutputBtn" class="btn" type="button">Copy</button>
+        </div>
+        <div class="row gap-sm modal-actions">
+          <button id="modalCancelBtn" class="btn" type="button">Cancel</button>
+          <button id="modalConfirmBtn" class="btn primary" type="button">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
