@@ -69,7 +69,17 @@ const getStripe = () => {
   });
 };
 
-const getClientBaseUrl = () => process.env.APP_URL || process.env.CLIENT_URL || 'http://localhost:5173';
+function sanitizeBaseUrl(url) {
+  return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function getClientBaseUrl(req) {
+  // Prefer explicit frontend URL first, then app URL, then request origin as fallback.
+  return sanitizeBaseUrl(process.env.CLIENT_URL)
+    || sanitizeBaseUrl(process.env.APP_URL)
+    || sanitizeBaseUrl(req.get('origin'))
+    || 'http://localhost:5173';
+}
 
 const guessPlanKeyFromPrice = (priceId) =>
   Object.entries(PLAN_PRICE_IDS).find(([, configuredPriceId]) => configuredPriceId === priceId)?.[0] || null;
@@ -82,10 +92,16 @@ async function getCurrentUser(userId) {
 }
 
 async function getOrCreateCustomer(stripe, user) {
-  const existingByMeta = await stripe.customers.search({
-    query: `metadata['userId']:'${user.id}'`,
-    limit: 1,
-  });
+  let existingByMeta = { data: [] };
+  try {
+    existingByMeta = await stripe.customers.search({
+      query: `metadata['userId']:'${user.id}'`,
+      limit: 1,
+    });
+  } catch (error) {
+    // Some accounts/regions may not have search enabled; fallback to email lookup.
+    existingByMeta = { data: [] };
+  }
 
   if (existingByMeta.data.length > 0) {
     return existingByMeta.data[0];
@@ -299,7 +315,7 @@ exports.createCheckoutSession = async (req, res, next) => {
     }
 
     const customer = await getOrCreateCustomer(stripe, user);
-    const baseUrl = getClientBaseUrl();
+    const baseUrl = getClientBaseUrl(req);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -422,7 +438,7 @@ exports.createPortalSession = async (req, res, next) => {
     }
 
     const customer = await getOrCreateCustomer(stripe, user);
-    const baseUrl = getClientBaseUrl();
+    const baseUrl = getClientBaseUrl(req);
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customer.id,
