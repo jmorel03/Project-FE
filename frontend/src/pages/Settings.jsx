@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
@@ -41,6 +42,31 @@ export default function Settings() {
   useDocumentTitle('Xpensist | Settings');
 
   const { user, updateUser } = useAuth();
+  const checklistPreferenceKey = useMemo(
+    () => (user?.id ? `xpensist:dashboard:hideChecklist:${user.id}` : null),
+    [user?.id],
+  );
+  const [hideChecklist, setHideChecklist] = useState(false);
+
+  useEffect(() => {
+    if (!checklistPreferenceKey) {
+      setHideChecklist(false);
+      return;
+    }
+    setHideChecklist(localStorage.getItem(checklistPreferenceKey) === '1');
+  }, [checklistPreferenceKey]);
+
+  function handleChecklistPreferenceChange(checked) {
+    setHideChecklist(checked);
+    if (!checklistPreferenceKey) return;
+    if (checked) {
+      localStorage.setItem(checklistPreferenceKey, '1');
+      toast.success('Checklist hidden on dashboard');
+    } else {
+      localStorage.removeItem(checklistPreferenceKey);
+      toast.success('Checklist visible on dashboard');
+    }
+  }
 
   const {
     register: regProfile,
@@ -157,6 +183,23 @@ export default function Settings() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Dashboard Preferences */}
+      <div className="card p-6 space-y-4">
+        <h2 className="text-base font-semibold text-gray-900">Dashboard Preferences</h2>
+        <label className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Hide onboarding checklist</p>
+            <p className="mt-1 text-xs text-gray-500">Turn this on if you do not want to see checklist cards in your dashboard.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={hideChecklist}
+            onChange={(e) => handleChecklistPreferenceChange(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </label>
       </div>
 
       {/* Support */}

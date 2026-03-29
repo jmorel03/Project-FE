@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -15,6 +16,7 @@ import { dashboardService } from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import { format } from 'date-fns';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useAuth } from '../context/AuthContext';
 
 function StatCard({ label, value, sub, color = 'primary' }) {
   const colors = {
@@ -67,6 +69,31 @@ function InsightCard({ icon: Icon, label, value, detail, tone = 'primary' }) {
 
 export default function Dashboard() {
   useDocumentTitle('Xpensist | Dashboard');
+  const { user } = useAuth();
+
+  const [hideChecklist, setHideChecklist] = useState(false);
+
+  const checklistPreferenceKey = user?.id
+    ? `xpensist:dashboard:hideChecklist:${user.id}`
+    : null;
+
+  useEffect(() => {
+    if (!checklistPreferenceKey) {
+      setHideChecklist(false);
+      return;
+    }
+    setHideChecklist(localStorage.getItem(checklistPreferenceKey) === '1');
+  }, [checklistPreferenceKey]);
+
+  function setChecklistHidden(nextHidden) {
+    setHideChecklist(nextHidden);
+    if (!checklistPreferenceKey) return;
+    if (nextHidden) {
+      localStorage.setItem(checklistPreferenceKey, '1');
+    } else {
+      localStorage.removeItem(checklistPreferenceKey);
+    }
+  }
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: dashboardService.stats });
   const { data: revenue } = useQuery({ queryKey: ['dashboard-revenue'], queryFn: dashboardService.revenue });
@@ -77,6 +104,7 @@ export default function Dashboard() {
   const remainingChecklist = checklist.filter((item) => !item.complete);
   const completedChecklist = checklist.filter((item) => item.complete).length;
   const isChecklistComplete = checklist.length > 0 && remainingChecklist.length === 0;
+  const shouldShowChecklistPanel = !hideChecklist && !isChecklistComplete;
   const summary = insights?.summary;
   const followUpQueue = insights?.topInvoices || [];
   const focusItems = insights?.focusItems || [];
@@ -106,14 +134,30 @@ export default function Dashboard() {
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-wide text-slate-400">Checklist Progress</p>
-            <p className="mt-2 text-2xl font-bold">
-              {isChecklistComplete ? 'Complete' : `${completedChecklist}/${checklist.length || 5}`}
-            </p>
-            <p className="mt-1 text-sm text-slate-300">
-              {isChecklistComplete
-                ? 'Core setup is finished. Remaining dashboard cards now drive daily operations.'
-                : 'Complete the basics to get cleaner billing and reporting.'}
-            </p>
+            {hideChecklist ? (
+              <>
+                <p className="mt-2 text-2xl font-bold">Hidden</p>
+                <p className="mt-1 text-sm text-slate-300">Checklist is currently hidden for this account.</p>
+                <button
+                  type="button"
+                  onClick={() => setChecklistHidden(false)}
+                  className="mt-3 text-xs font-semibold text-white underline underline-offset-4"
+                >
+                  Show checklist
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-2xl font-bold">
+                  {isChecklistComplete ? 'Complete' : `${completedChecklist}/${checklist.length || 5}`}
+                </p>
+                <p className="mt-1 text-sm text-slate-300">
+                  {isChecklistComplete
+                    ? 'Core setup is finished. Remaining dashboard cards now drive daily operations.'
+                    : 'Complete the basics to get cleaner billing and reporting.'}
+                </p>
+              </>
+            )}
           </div>
           <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-wide text-slate-400">Pending Collections</p>
@@ -153,16 +197,25 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {!isChecklistComplete && (
+        {shouldShowChecklistPanel && (
           <div className="card p-6 lg:col-span-2">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Onboarding Checklist</h2>
                 <p className="mt-1 text-sm text-gray-500">These steps help new accounts reach their first invoice and first payment faster.</p>
               </div>
-              <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
-                {completedChecklist}/{checklist.length || 5} complete
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+                  {completedChecklist}/{checklist.length || 5} complete
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setChecklistHidden(true)}
+                  className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                >
+                  Hide
+                </button>
+              </div>
             </div>
 
             <div className="mt-5 space-y-3">
@@ -185,7 +238,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className={`card p-6 ${isChecklistComplete ? 'lg:col-span-3' : ''}`}>
+        <div className={`card p-6 ${shouldShowChecklistPanel ? '' : 'lg:col-span-3'}`}>
           <h2 className="text-lg font-semibold text-gray-900">Focus This Week</h2>
           <p className="mt-1 text-sm text-gray-500">A short action stack based on your current account activity.</p>
           <div className="mt-5 space-y-3">
