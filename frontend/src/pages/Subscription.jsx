@@ -55,6 +55,12 @@ export default function Subscription() {
     onSuccess: (data) => {
       if (data?.url) {
         window.location.href = data.url;
+        return;
+      }
+
+      if (data?.updated) {
+        toast.success(data?.message || 'Subscription updated.');
+        refetch();
       }
     },
     onError: (err) => toast.error(err?.response?.data?.error || 'Unable to start checkout'),
@@ -140,7 +146,9 @@ export default function Subscription() {
               <p className="text-sm font-semibold text-gray-900 capitalize">{activePlanKey} Plan</p>
               <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 uppercase tracking-wide">Active</span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Free — upgrade anytime to unlock more features.</p>
+            {activePlanKey === 'starter' && (
+              <p className="text-sm text-gray-500 mt-1">Free — upgrade anytime to unlock more features.</p>
+            )}
           </div>
         ) : (
           <p className="text-sm text-gray-500">No active subscription yet.</p>

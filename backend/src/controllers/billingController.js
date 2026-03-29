@@ -169,6 +169,36 @@ async function upsertSubscriptionRecord({ stripeCustomerId, stripeSubscription }
   });
 }
 
+async function cancelOtherActiveSubscriptions({ stripe, stripeCustomerId, keepSubscriptionId }) {
+  const existingSubs = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'all',
+    limit: 50,
+  });
+
+  const toCancel = existingSubs.data.filter(
+    (sub) =>
+      sub.id !== keepSubscriptionId
+      && (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due' || sub.status === 'unpaid'),
+  );
+
+  for (const sub of toCancel) {
+    try {
+      await stripe.subscriptions.cancel(sub.id);
+      await prisma.billingSubscription.updateMany({
+        where: { stripeSubscriptionId: sub.id },
+        data: {
+          status: 'canceled',
+          cancelAtPeriodEnd: false,
+          currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+        },
+      });
+    } catch (error) {
+      // Continue canceling remaining subscriptions to avoid leaving duplicates active.
+    }
+  }
+}
+
 const STATIC_FREE_PLAN = {
   key: 'starter',
   priceId: null,
@@ -346,6 +376,60 @@ exports.createCheckoutSession = async (req, res, next) => {
     }
 
     const customer = await getOrCreateCustomer(stripe, user);
+
+    // If the customer already has an active paid subscription, update it in place
+    // instead of creating a second subscription via Checkout.
+    const existingSubs = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'all',
+      limit: 10,
+      expand: ['data.items.data.price'],
+    });
+
+    const currentPaidSub = existingSubs.data.find((sub) => {
+      if (!['active', 'trialing', 'past_due', 'unpaid'].includes(sub.status)) return false;
+      const firstItem = sub.items?.data?.[0];
+      return Boolean(firstItem?.price?.id);
+    });
+
+    if (currentPaidSub) {
+      const firstItem = currentPaidSub.items.data[0];
+
+      if (firstItem.price.id === priceId) {
+        return res.json({
+          updated: true,
+          unchanged: true,
+          message: 'You are already on this plan.',
+        });
+      }
+
+      const updatedSubscription = await stripe.subscriptions.update(currentPaidSub.id, {
+        cancel_at_period_end: false,
+        proration_behavior: 'create_prorations',
+        items: [
+          {
+            id: firstItem.id,
+            price: priceId,
+          },
+        ],
+        metadata: {
+          userId: user.id,
+          planKey: normalizedPlan,
+        },
+      });
+
+      await upsertSubscriptionRecord({
+        stripeCustomerId: customer.id,
+        stripeSubscription: updatedSubscription,
+      });
+
+      return res.json({
+        updated: true,
+        subscriptionId: updatedSubscription.id,
+        message: 'Subscription updated successfully.',
+      });
+    }
+
     const baseUrl = getClientBaseUrl(req);
 
     const session = await stripe.checkout.sessions.create({
@@ -511,6 +595,11 @@ exports.handleStripeWebhook = async (req, res) => {
           await upsertSubscriptionRecord({
             stripeCustomerId: session.customer,
             stripeSubscription: subscription,
+          });
+          await cancelOtherActiveSubscriptions({
+            stripe,
+            stripeCustomerId: session.customer,
+            keepSubscriptionId: subscription.id,
           });
         }
         break;
