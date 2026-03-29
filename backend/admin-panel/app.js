@@ -1,8 +1,9 @@
 const storageKeys = {
-  apiBase: 'xpensist_admin_api_base',
   token: 'xpensist_admin_access_token',
   email: 'xpensist_admin_email',
 };
+
+const API_BASE = `${window.location.origin}/api`;
 
 let state = {
   page: 1,
@@ -21,7 +22,6 @@ const els = {
   loginForm: document.getElementById('loginForm'),
   loginError: document.getElementById('loginError'),
   loginBtn: document.getElementById('loginBtn'),
-  apiBase: document.getElementById('apiBase'),
   email: document.getElementById('email'),
   password: document.getElementById('password'),
   totp: document.getElementById('totp'),
@@ -84,16 +84,11 @@ function formatRelative(dateStr) {
   return `${Math.floor(days / 365)}y ago`;
 }
 
-function cleanApiBase(raw) {
-  return String(raw || '').trim().replace(/\/+$/, '');
-}
-
 function initials(name) {
   return String(name || '?').trim().split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
-function setSession({ apiBase, token, email }) {
-  localStorage.setItem(storageKeys.apiBase, apiBase);
+function setSession({ token, email }) {
   localStorage.setItem(storageKeys.token, token);
   localStorage.setItem(storageKeys.email, email);
 }
@@ -104,7 +99,6 @@ function clearSession() {
 
 function getSession() {
   return {
-    apiBase: localStorage.getItem(storageKeys.apiBase) || '',
     token: localStorage.getItem(storageKeys.token) || '',
     email: localStorage.getItem(storageKeys.email) || '',
   };
@@ -185,8 +179,8 @@ function openModal({
 }
 
 async function apiFetch(path, opts = {}) {
-  const { apiBase, token } = getSession();
-  const res = await fetch(`${apiBase}${path}`, {
+  const { token } = getSession();
+  const res = await fetch(`${API_BASE}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -518,12 +512,11 @@ els.loginForm.addEventListener('submit', async (event) => {
   els.loginError.textContent = '';
 
   try {
-    const apiBase = cleanApiBase(els.apiBase.value);
     const email = els.email.value.trim().toLowerCase();
     const password = els.password.value;
     const totp = els.totp.value.trim();
 
-    const res = await fetch(`${apiBase}/admin/auth/login`, {
+    const res = await fetch(`${API_BASE}/admin/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, totp }),
@@ -531,7 +524,7 @@ els.loginForm.addEventListener('submit', async (event) => {
     const body = await res.json();
     if (!res.ok) throw new Error(body?.error || 'Login failed');
 
-    setSession({ apiBase, token: body.accessToken, email });
+    setSession({ token: body.accessToken, email });
     showApp(email);
     await loadDashboard();
     state.refreshTimer = setInterval(loadOverview, 60000);
@@ -633,9 +626,8 @@ document.addEventListener('keydown', (e) => {
 
 (async function bootstrap() {
   const session = getSession();
-  els.apiBase.value = session.apiBase || 'https://invoiceflow.xpensist.com/api';
 
-  if (!session.token || !session.apiBase) {
+  if (!session.token) {
     showLogin();
     return;
   }
