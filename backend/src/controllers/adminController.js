@@ -338,3 +338,74 @@ exports.cancelUserSubscription = async (req, res, next) => {
     return next(err);
   }
 };
+
+exports.deleteUserAccount = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    const reason = String(req.body?.reason || '').trim() || 'Deleted by admin';
+    const stripe = getStripe();
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        subscriptions: {
+          where: { status: { in: ['active', 'trialing'] } },
+          select: { id: true, stripeSubscriptionId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const paidStripeSubscriptionIds = user.subscriptions
+      .map((sub) => sub.stripeSubscriptionId)
+      .filter((subId) => subId && !String(subId).startsWith('free_'));
+
+    if (paidStripeSubscriptionIds.length > 0 && !stripe) {
+      return res.status(400).json({
+        error: 'Cannot delete this user while Stripe is not configured. Cancel paid subscriptions first.',
+      });
+    }
+
+    for (const subscriptionId of paidStripeSubscriptionIds) {
+      await stripe.subscriptions.cancel(subscriptionId);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (user.subscriptions.length > 0) {
+        await tx.billingSubscription.deleteMany({
+          where: { userId },
+        });
+      }
+
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    await logAdminAction(req, {
+      action: 'user.delete_account',
+      targetUserId: userId,
+      metadata: {
+        email: user.email,
+        reason,
+        canceledStripeSubscriptions: paidStripeSubscriptionIds,
+      },
+    });
+
+    return res.json({
+      message: `User account deleted: ${user.email}`,
+      user: { id: user.id, email: user.email },
+    });
+  } catch (err) {
+    await logAdminAction(req, {
+      action: 'user.delete_account',
+      targetUserId: req.params.id,
+      status: 'failed',
+      metadata: { error: err.message },
+    });
+    return next(err);
+  }
+};

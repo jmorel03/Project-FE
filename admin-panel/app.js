@@ -306,6 +306,7 @@ function renderUsers(payload) {
             <button class="btn sm" data-action="suspend" data-user-id="${user.id}" data-user-email="${user.email}" data-suspended="${user.isSuspended}">${user.isSuspended ? 'Unsuspend' : 'Suspend'}</button>
             <button class="btn sm" data-action="reset-password" data-user-id="${user.id}" data-user-email="${user.email}">Reset PW</button>
             ${isActivePlan && !sub?.cancelAtPeriodEnd ? `<button class="btn sm" data-action="cancel-sub" data-user-id="${user.id}" data-user-email="${user.email}">Cancel Sub</button>` : ''}
+            <button class="btn sm danger" data-action="delete-account" data-user-id="${user.id}" data-user-email="${user.email}">Delete Account</button>
           </div>
         </td>
       </tr>
@@ -480,6 +481,34 @@ async function handleUserAction(event) {
 
       await apiFetch(`/admin/users/${userId}/cancel-subscription`, { method: 'POST' });
       showToast(`Cancellation scheduled for ${userEmail}`);
+    }
+
+    if (action === 'delete-account') {
+      const result = await openModal({
+        title: 'Delete User Account',
+        message: `Delete ${userEmail} permanently? This will remove profile data, invoices, clients, expenses, and active sessions. Type DELETE to confirm.`,
+        confirmLabel: 'Delete Account',
+        showInput: true,
+        inputLabel: 'Reason (internal)',
+        inputValue: 'Deleted by admin',
+        showInputConfirm: true,
+        inputConfirmLabel: 'Type DELETE to confirm',
+        inputConfirmPlaceholder: 'DELETE',
+        danger: true,
+      });
+      if (!result.confirmed) return;
+
+      if (String(result.inputConfirm || '').toUpperCase() !== 'DELETE') {
+        showToast('Type DELETE to confirm account deletion', 'error');
+        return;
+      }
+
+      await apiFetch(`/admin/users/${userId}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason: result.input || 'Deleted by admin' }),
+      });
+
+      showToast(`${userEmail} deleted`);
     }
 
     await loadUsers();

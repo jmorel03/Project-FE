@@ -6,14 +6,19 @@ const { checkInvoiceMonthlyLimit } = require('../lib/planLimits');
 
 // Generates next invoice number like INV-0001
 async function nextInvoiceNumber(userId) {
-  const last = await prisma.invoice.findFirst({
+  const invoices = await prisma.invoice.findMany({
     where: { userId },
-    orderBy: { createdAt: 'desc' },
     select: { invoiceNumber: true },
   });
-  if (!last) return 'INV-0001';
-  const num = parseInt(last.invoiceNumber.split('-')[1] || '0', 10) + 1;
-  return `INV-${String(num).padStart(4, '0')}`;
+
+  const maxForUser = invoices.reduce((max, inv) => {
+    const match = /^INV-(\d+)$/.exec(String(inv.invoiceNumber || ''));
+    if (!match) return max;
+    const parsed = Number.parseInt(match[1], 10);
+    return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
+  }, 0);
+
+  return `INV-${String(maxForUser + 1).padStart(4, '0')}`;
 }
 
 function calcTotals(items, taxRate = 0, discountRate = 0) {
@@ -97,37 +102,54 @@ exports.createInvoice = async (req, res, next) => {
     const client = await prisma.client.findFirst({ where: { id: clientId, userId: req.userId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
 
-    const invoiceNumber = await nextInvoiceNumber(req.userId);
     const totals = calcTotals(items, Number(taxRate), Number(discountRate));
+    let invoice = null;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const invoiceNumber = await nextInvoiceNumber(req.userId);
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        userId: req.userId,
-        clientId,
-        invoiceNumber,
-        dueDate: new Date(dueDate),
-        currency: currency || 'USD',
-        taxRate: Number(taxRate),
-        discountRate: Number(discountRate),
-        notes,
-        terms,
-        status,
-        ...totals,
-        items: {
-          create: items.map((item, idx) => ({
-            description: item.description,
-            quantity: Number(item.quantity),
-            unitPrice: Number(item.unitPrice),
-            total: +(Number(item.quantity) * Number(item.unitPrice)).toFixed(2),
-            order: idx,
-          })),
-        },
-      },
-      include: {
-        client: true,
-        items: { orderBy: { order: 'asc' } },
-      },
-    });
+      try {
+        invoice = await prisma.invoice.create({
+          data: {
+            userId: req.userId,
+            clientId,
+            invoiceNumber,
+            dueDate: new Date(dueDate),
+            currency: currency || 'USD',
+            taxRate: Number(taxRate),
+            discountRate: Number(discountRate),
+            notes,
+            terms,
+            status,
+            ...totals,
+            items: {
+              create: items.map((item, idx) => ({
+                description: item.description,
+                quantity: Number(item.quantity),
+                unitPrice: Number(item.unitPrice),
+                total: +(Number(item.quantity) * Number(item.unitPrice)).toFixed(2),
+                order: idx,
+              })),
+            },
+          },
+          include: {
+            client: true,
+            items: { orderBy: { order: 'asc' } },
+          },
+        });
+        break;
+      } catch (error) {
+        if (error?.code === 'P2002') {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (!invoice) {
+      return res.status(409).json({
+        error: 'Could not generate a unique invoice number. Please try again.',
+      });
+    }
 
     res.status(201).json(invoice);
   } catch (err) {

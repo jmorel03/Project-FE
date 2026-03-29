@@ -9,6 +9,7 @@ const {
 	suspendUser,
 	resetUserPassword,
 	cancelUserSubscription,
+	deleteUserAccount,
 } = require('../controllers/adminController');
 const { adminLogin } = require('../controllers/adminAuthController');
 const { validate } = require('../middleware/validate');
@@ -35,5 +36,9 @@ router.post('/users/:id/reset-password', [
 	body('newPassword').isString().isLength({ min: 8 }),
 ], validate, resetUserPassword);
 router.post('/users/:id/cancel-subscription', [param('id').isUUID()], validate, cancelUserSubscription);
+router.delete('/users/:id', [
+	param('id').isUUID(),
+	body('reason').optional().isString().isLength({ max: 500 }),
+], validate, deleteUserAccount);
 
 module.exports = router;

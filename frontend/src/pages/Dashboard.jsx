@@ -74,7 +74,9 @@ export default function Dashboard() {
   const { data: insights } = useQuery({ queryKey: ['dashboard-insights'], queryFn: dashboardService.insights });
 
   const checklist = insights?.checklist || [];
+  const remainingChecklist = checklist.filter((item) => !item.complete);
   const completedChecklist = checklist.filter((item) => item.complete).length;
+  const isChecklistComplete = checklist.length > 0 && remainingChecklist.length === 0;
   const summary = insights?.summary;
   const followUpQueue = insights?.topInvoices || [];
   const focusItems = insights?.focusItems || [];
@@ -104,8 +106,14 @@ export default function Dashboard() {
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-wide text-slate-400">Checklist Progress</p>
-            <p className="mt-2 text-2xl font-bold">{completedChecklist}/{checklist.length || 5}</p>
-            <p className="mt-1 text-sm text-slate-300">Complete the basics to get cleaner billing and reporting.</p>
+            <p className="mt-2 text-2xl font-bold">
+              {isChecklistComplete ? 'Complete' : `${completedChecklist}/${checklist.length || 5}`}
+            </p>
+            <p className="mt-1 text-sm text-slate-300">
+              {isChecklistComplete
+                ? 'Core setup is finished. Remaining dashboard cards now drive daily operations.'
+                : 'Complete the basics to get cleaner billing and reporting.'}
+            </p>
           </div>
           <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
             <p className="text-xs uppercase tracking-wide text-slate-400">Pending Collections</p>
@@ -145,37 +153,39 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="card p-6 lg:col-span-2">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Onboarding Checklist</h2>
-              <p className="mt-1 text-sm text-gray-500">These steps help new accounts reach their first invoice and first payment faster.</p>
+        {!isChecklistComplete && (
+          <div className="card p-6 lg:col-span-2">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Onboarding Checklist</h2>
+                <p className="mt-1 text-sm text-gray-500">These steps help new accounts reach their first invoice and first payment faster.</p>
+              </div>
+              <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+                {completedChecklist}/{checklist.length || 5} complete
+              </span>
             </div>
-            <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
-              {completedChecklist}/{checklist.length || 5} complete
-            </span>
-          </div>
 
-          <div className="mt-5 space-y-3">
-            {checklist.map((item) => (
-              <Link
-                key={item.key}
-                to={item.path}
-                className="flex items-start gap-3 rounded-2xl border border-gray-100 px-4 py-4 transition hover:border-primary-200 hover:bg-primary-50/40"
-              >
-                <div className={`mt-0.5 rounded-full p-1 ${item.complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                  <CheckCircleIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                  <p className="mt-1 text-sm text-gray-500">{item.description}</p>
-                </div>
-              </Link>
-            ))}
+            <div className="mt-5 space-y-3">
+              {remainingChecklist.map((item) => (
+                <Link
+                  key={item.key}
+                  to={item.path}
+                  className="flex items-start gap-3 rounded-2xl border border-gray-100 px-4 py-4 transition hover:border-primary-200 hover:bg-primary-50/40"
+                >
+                  <div className="mt-0.5 rounded-full bg-slate-100 p-1 text-slate-500">
+                    <CheckCircleIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                    <p className="mt-1 text-sm text-gray-500">{item.description}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="card p-6">
+        <div className={`card p-6 ${isChecklistComplete ? 'lg:col-span-3' : ''}`}>
           <h2 className="text-lg font-semibold text-gray-900">Focus This Week</h2>
           <p className="mt-1 text-sm text-gray-500">A short action stack based on your current account activity.</p>
           <div className="mt-5 space-y-3">

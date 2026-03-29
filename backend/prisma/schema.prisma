@@ -125,7 +125,7 @@ model Invoice {
   id             String        @id @default(uuid())
   userId         String
   clientId       String
-  invoiceNumber  String        @unique
+  invoiceNumber  String
   status         InvoiceStatus @default(DRAFT)
   issueDate      DateTime      @default(now())
   dueDate        DateTime
@@ -149,6 +149,8 @@ model Invoice {
   items    InvoiceItem[]
   payments Payment[]
   reminders InvoiceReminder[]
+
+  @@unique([userId, invoiceNumber])
 }
 
 model InvoiceItem {
