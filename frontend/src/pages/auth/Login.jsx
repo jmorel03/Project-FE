@@ -43,10 +43,8 @@ export default function Login() {
 
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+            <img src="/favicon.svg" alt="Xpensist logo" className="h-8 w-8" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Xpensist</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
