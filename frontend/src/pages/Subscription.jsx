@@ -1,4 +1,6 @@
-﻿import { useMutation, useQuery } from '@tanstack/react-query';
+﻿import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowTopRightOnSquareIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import { billingService } from '../services/api';
 import toast from 'react-hot-toast';
@@ -22,6 +24,9 @@ const comparisonRows = [
 export default function Subscription() {
   useDocumentTitle('Xpensist | Subscription');
 
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   const { data: plansData, isLoading: plansLoading } = useQuery({
     queryKey: ['billing-plans'],
     queryFn: billingService.getPlans,
@@ -31,6 +36,19 @@ export default function Subscription() {
     queryKey: ['billing-summary'],
     queryFn: billingService.getSummary,
   });
+
+  // Auto-refetch when Stripe redirects back with ?checkout=success
+  useEffect(() => {
+    const checkout = searchParams.get('checkout');
+    if (checkout === 'success') {
+      toast.success('Subscription activated! Your plan has been updated.');
+      refetch();
+      navigate('/settings/subscription', { replace: true });
+    } else if (checkout === 'cancelled') {
+      toast('Checkout cancelled.', { icon: 'ℹ️' });
+      navigate('/settings/subscription', { replace: true });
+    }
+  }, [searchParams, refetch, navigate]);
 
   const checkoutMutation = useMutation({
     mutationFn: billingService.createCheckoutSession,

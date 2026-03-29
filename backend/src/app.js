@@ -21,7 +21,9 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 
 if (process.env.TRUST_PROXY) {
-  app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : process.env.TRUST_PROXY);
+  const tp = process.env.TRUST_PROXY;
+  const num = Number(tp);
+  app.set('trust proxy', tp === 'true' ? true : tp === 'false' ? false : !isNaN(num) ? num : tp);
 }
 
 // ─── Security ────────────────────────────────────────────────────────────────
@@ -88,15 +90,34 @@ try {
   adminHost = '';
 }
 
+function resolveRequestHost(req) {
+  // Check multiple sources in priority order.
+  // req.hostname uses X-Forwarded-Host when trust proxy is enabled.
+  // The raw header fallbacks handle cases where trust proxy isn't set yet.
+  const candidates = [
+    req.hostname,
+    req.headers['x-forwarded-host'],
+    req.headers['host'],
+  ];
+  for (const h of candidates) {
+    const host = String(h || '').split(':')[0].trim().toLowerCase();
+    if (host) return host;
+  }
+  return '';
+}
+
 function isAdminHostRequest(req) {
-  const requestHost = String(req.hostname || '').toLowerCase();
-  return Boolean(adminHost) && requestHost === String(adminHost).toLowerCase();
+  if (!adminHost) return false;
+  return resolveRequestHost(req) === String(adminHost).toLowerCase();
 }
 
 app.get('/admin-health', (req, res) => {
   res.json({
     ok: true,
-    requestHost: req.hostname || null,
+    requestHost: resolveRequestHost(req),
+    reqHostname: req.hostname || null,
+    headerHost: req.headers['host'] || null,
+    headerXForwardedHost: req.headers['x-forwarded-host'] || null,
     expectedAdminHost: adminHost || null,
     adminHostMatched: isAdminHostRequest(req),
     hasAdminPanel,

@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma');
 const { generateInvoicePdf } = require('../services/pdfService');
 const { sendInvoiceEmail } = require('../services/emailService');
 const { inferReminderType, sendReminderForInvoice } = require('../services/invoiceReminderService');
+const { checkInvoiceMonthlyLimit } = require('../lib/planLimits');
 
 // Generates next invoice number like INV-0001
 async function nextInvoiceNumber(userId) {
@@ -86,6 +87,11 @@ exports.getInvoice = async (req, res, next) => {
 
 exports.createInvoice = async (req, res, next) => {
   try {
+    const limitHit = await checkInvoiceMonthlyLimit(req.userId);
+    if (limitHit) {
+      return res.status(403).json({ error: limitHit.message, code: limitHit.code, limit: limitHit.limit, used: limitHit.used });
+    }
+
     const { clientId, dueDate, currency, items, taxRate = 0, discountRate = 0, notes, terms, status = 'DRAFT' } = req.body;
 
     const client = await prisma.client.findFirst({ where: { id: clientId, userId: req.userId } });
