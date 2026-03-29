@@ -1,5 +1,129 @@
 const prisma = require('../lib/prisma');
-const { startOfMonth, endOfMonth, subMonths, format, addDays, differenceInCalendarDays, differenceInDays } = require('date-fns');
+const {
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  format,
+  addDays,
+  addMonths,
+  differenceInCalendarDays,
+  differenceInDays,
+  eachDayOfInterval,
+  startOfDay,
+} = require('date-fns');
+
+function toNumber(value) {
+  return Number(value) || 0;
+}
+
+function calculateChangePct(currentValue, previousValue) {
+  if (!previousValue) {
+    return currentValue === 0 ? 0 : null;
+  }
+
+  return Math.round(((currentValue - previousValue) / Math.abs(previousValue)) * 100);
+}
+
+function resolveFinanceRange(range, now) {
+  if (range === 'quarter') {
+    const currentStart = startOfMonth(subMonths(now, 2));
+    const currentEnd = now;
+    const previousStart = startOfMonth(subMonths(currentStart, 3));
+    const previousEnd = endOfMonth(subMonths(currentStart, 1));
+
+    return {
+      range: 'quarter',
+      currentStart,
+      currentEnd,
+      previousStart,
+      previousEnd,
+      comparisonLabel: 'vs previous 3 months',
+      trendLabel: 'Monthly net profit trend',
+    };
+  }
+
+  if (range === 'year') {
+    const currentStart = startOfMonth(subMonths(now, 11));
+    const currentEnd = now;
+    const previousStart = startOfMonth(subMonths(currentStart, 12));
+    const previousEnd = endOfMonth(subMonths(currentStart, 1));
+
+    return {
+      range: 'year',
+      currentStart,
+      currentEnd,
+      previousStart,
+      previousEnd,
+      comparisonLabel: 'vs previous 12 months',
+      trendLabel: 'Monthly net profit trend',
+    };
+  }
+
+  const previousMonth = subMonths(now, 1);
+  return {
+    range: 'month',
+    currentStart: startOfMonth(now),
+    currentEnd: now,
+    previousStart: startOfMonth(previousMonth),
+    previousEnd: endOfMonth(previousMonth),
+    comparisonLabel: 'vs last month',
+    trendLabel: 'Daily net profit trend',
+  };
+}
+
+function buildFinanceTrend(range, currentStart, currentEnd, paidInvoices, expenses) {
+  const invoiceBuckets = new Map();
+  const expenseBuckets = new Map();
+
+  function getBucketKey(date) {
+    if (range === 'month') return format(date, 'yyyy-MM-dd');
+    return format(date, 'yyyy-MM');
+  }
+
+  paidInvoices.forEach((invoice) => {
+    const key = getBucketKey(invoice.paidAt);
+    invoiceBuckets.set(key, (invoiceBuckets.get(key) || 0) + toNumber(invoice.total));
+  });
+
+  expenses.forEach((expense) => {
+    const key = getBucketKey(expense.date);
+    expenseBuckets.set(key, (expenseBuckets.get(key) || 0) + toNumber(expense.amount));
+  });
+
+  if (range === 'month') {
+    return eachDayOfInterval({
+      start: startOfDay(currentStart),
+      end: startOfDay(currentEnd),
+    }).map((day) => {
+      const key = format(day, 'yyyy-MM-dd');
+      const moneyIn = invoiceBuckets.get(key) || 0;
+      const moneyOut = expenseBuckets.get(key) || 0;
+
+      return {
+        label: format(day, 'MMM d'),
+        moneyIn,
+        moneyOut,
+        netProfit: moneyIn - moneyOut,
+      };
+    });
+  }
+
+  const months = range === 'quarter' ? 3 : 12;
+
+  return Array.from({ length: months }, (_, index) => {
+    const month = startOfMonth(addMonths(currentStart, index));
+    const key = format(month, 'yyyy-MM');
+    const moneyIn = invoiceBuckets.get(key) || 0;
+    const moneyOut = expenseBuckets.get(key) || 0;
+
+    return {
+      label: format(month, 'MMM'),
+      moneyIn,
+      moneyOut,
+      netProfit: moneyIn - moneyOut,
+    };
+  });
+}
 
 exports.getStats = async (req, res, next) => {
   try {
@@ -325,6 +449,102 @@ exports.getInsights = async (req, res, next) => {
         daysUntilDue: invoice.daysUntilDue,
         lastReminder: invoice.reminders[0] || null,
       })),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getFinanceSummary = async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    const now = new Date();
+    const {
+      range,
+      currentStart,
+      currentEnd,
+      previousStart,
+      previousEnd,
+      comparisonLabel,
+      trendLabel,
+    } = resolveFinanceRange(String(req.query.range || 'month').toLowerCase(), now);
+
+    const [
+      currentPaid,
+      currentExpenses,
+      previousPaid,
+      previousExpenses,
+      currentPaidInvoices,
+      currentExpenseItems,
+    ] = await Promise.all([
+      prisma.invoice.aggregate({
+        where: {
+          userId,
+          status: 'PAID',
+          paidAt: { gte: currentStart, lte: currentEnd },
+        },
+        _sum: { total: true },
+      }),
+      prisma.expense.aggregate({
+        where: {
+          userId,
+          date: { gte: currentStart, lte: currentEnd },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.invoice.aggregate({
+        where: {
+          userId,
+          status: 'PAID',
+          paidAt: { gte: previousStart, lte: previousEnd },
+        },
+        _sum: { total: true },
+      }),
+      prisma.expense.aggregate({
+        where: {
+          userId,
+          date: { gte: previousStart, lte: previousEnd },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.invoice.findMany({
+        where: {
+          userId,
+          status: 'PAID',
+          paidAt: { gte: currentStart, lte: currentEnd },
+        },
+        select: { paidAt: true, total: true },
+        orderBy: { paidAt: 'asc' },
+      }),
+      prisma.expense.findMany({
+        where: {
+          userId,
+          date: { gte: currentStart, lte: currentEnd },
+        },
+        select: { date: true, amount: true },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
+
+    const moneyIn = toNumber(currentPaid._sum.total);
+    const moneyOut = toNumber(currentExpenses._sum.amount);
+    const netProfit = moneyIn - moneyOut;
+
+    const previousMoneyIn = toNumber(previousPaid._sum.total);
+    const previousMoneyOut = toNumber(previousExpenses._sum.amount);
+    const previousNetProfit = previousMoneyIn - previousMoneyOut;
+
+    res.json({
+      range,
+      comparisonLabel,
+      trendLabel,
+      moneyIn,
+      moneyOut,
+      netProfit,
+      moneyInChangePct: calculateChangePct(moneyIn, previousMoneyIn),
+      moneyOutChangePct: calculateChangePct(moneyOut, previousMoneyOut),
+      netProfitChangePct: calculateChangePct(netProfit, previousNetProfit),
+      trend: buildFinanceTrend(range, currentStart, currentEnd, currentPaidInvoices, currentExpenseItems),
     });
   } catch (err) {
     next(err);

@@ -13,7 +13,6 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { dashboardService } from '../services/api';
-import { Badge } from '../components/ui/Badge';
 import { format } from 'date-fns';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
@@ -72,6 +71,7 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const [hideChecklist, setHideChecklist] = useState(false);
+  const [financeRange, setFinanceRange] = useState('month');
 
   const checklistPreferenceKey = user?.id
     ? `xpensist:dashboard:hideChecklist:${user.id}`
@@ -96,6 +96,10 @@ export default function Dashboard() {
   }
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: dashboardService.stats });
+  const { data: finance } = useQuery({
+    queryKey: ['dashboard-finance', financeRange],
+    queryFn: () => dashboardService.finance({ range: financeRange }),
+  });
   const { data: revenue } = useQuery({ queryKey: ['dashboard-revenue'], queryFn: dashboardService.revenue });
   const { data: activity } = useQuery({ queryKey: ['dashboard-activity'], queryFn: dashboardService.activity });
   const { data: insights } = useQuery({ queryKey: ['dashboard-insights'], queryFn: dashboardService.insights });
@@ -108,6 +112,15 @@ export default function Dashboard() {
   const summary = insights?.summary;
   const followUpQueue = insights?.topInvoices || [];
   const focusItems = insights?.focusItems || [];
+  const moneyIn = Number(finance?.moneyIn || 0);
+  const moneyOut = Number(finance?.moneyOut || 0);
+  const netProfit = Number(finance?.netProfit || 0);
+
+  function renderChangeText(changePct) {
+    if (changePct == null) return `New ${finance?.comparisonLabel || 'vs previous period'}`;
+    if (changePct === 0) return `Flat ${finance?.comparisonLabel || 'vs previous period'}`;
+    return `${changePct > 0 ? '+' : ''}${changePct}% ${finance?.comparisonLabel || 'vs previous period'}`;
+  }
 
   return (
     <div className="space-y-8">
@@ -194,6 +207,79 @@ export default function Dashboard() {
           detail="High-balance or stale invoices that need follow-up now."
           tone="warning"
         />
+      </div>
+
+      <div className="card p-6">
+        <div className="flex flex-col gap-4 border-b border-gray-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Cash Flow Snapshot</h2>
+            <p className="mt-1 text-sm text-gray-500">Track money in, money out, and net profit with quick range switching.</p>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+            Range
+            <select
+              value={financeRange}
+              onChange={(event) => setFinanceRange(event.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium normal-case tracking-normal text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <option value="month">This Month</option>
+              <option value="quarter">Last 3 Months</option>
+              <option value="year">Last 12 Months</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Money In</p>
+            <p className="mt-3 text-3xl font-bold text-gray-900">{fmt(moneyIn)}</p>
+            <p className="mt-2 text-sm text-emerald-800">Payments collected in the selected range.</p>
+            <p className="mt-3 text-xs font-semibold text-emerald-700">{renderChangeText(finance?.moneyInChangePct)}</p>
+          </div>
+          <div className="rounded-2xl border border-red-100 bg-red-50/70 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">Money Out</p>
+            <p className="mt-3 text-3xl font-bold text-gray-900">{fmt(moneyOut)}</p>
+            <p className="mt-2 text-sm text-red-800">Expenses recorded in the selected range.</p>
+            <p className="mt-3 text-xs font-semibold text-red-700">{renderChangeText(finance?.moneyOutChangePct)}</p>
+          </div>
+          <div className="rounded-2xl border border-primary-100 bg-primary-50/70 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">Net Profit</p>
+            <p className={`mt-3 text-3xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {fmt(netProfit)}
+            </p>
+            <p className="mt-2 text-sm text-primary-800">Money in minus money out for the selected range.</p>
+            <p className={`mt-3 text-xs font-semibold ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+              {renderChangeText(finance?.netProfitChangePct)}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Net Profit Trend</p>
+              <p className="mt-1 text-xs text-gray-500">{finance?.trendLabel || 'Trend over the selected period'}</p>
+            </div>
+            <p className="text-xs font-medium text-gray-500">{finance?.comparisonLabel || 'vs previous period'}</p>
+          </div>
+          <div className="mt-4 h-36">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={finance?.trend || []} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="profitTrend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.22} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                <YAxis hide />
+                <Tooltip formatter={(value) => [fmt(value), 'Net Profit']} />
+                <Area type="monotone" dataKey="netProfit" stroke="#2563eb" strokeWidth={2} fill="url(#profitTrend)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

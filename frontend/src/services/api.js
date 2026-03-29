@@ -123,6 +123,7 @@ export const expenseService = {
 
 export const dashboardService = {
   stats: () => api.get('/dashboard/stats').then((r) => r.data),
+  finance: (params) => api.get('/dashboard/finance', { params }).then((r) => r.data),
   revenue: () => api.get('/dashboard/revenue').then((r) => r.data),
   activity: () => api.get('/dashboard/activity').then((r) => r.data),
   insights: () => api.get('/dashboard/insights').then((r) => r.data),
