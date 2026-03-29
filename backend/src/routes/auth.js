@@ -1,6 +1,14 @@
 const { Router } = require('express');
 const { body } = require('express-validator');
-const { register, login, refresh, logout, getMe, updateProfile } = require('../controllers/authController');
+const {
+  register,
+  login,
+  refresh,
+  logout,
+  getMe,
+  updateProfile,
+  resetPassword,
+} = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 
@@ -19,6 +27,10 @@ router.post('/login', [
 ], validate, login);
 
 router.post('/refresh', refresh);
+router.post('/reset-password', [
+  body('token').isString().isLength({ min: 32 }),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+], validate, resetPassword);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getMe);
 router.put('/me', authenticate, [

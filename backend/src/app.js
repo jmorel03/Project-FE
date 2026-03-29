@@ -18,6 +18,10 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : process.env.TRUST_PROXY);
+}
+
 // ─── Security ────────────────────────────────────────────────────────────────
 const allowedOrigins = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL, 'http://localhost:5173']
   .filter(Boolean)

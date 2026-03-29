@@ -12,6 +12,7 @@ const els = {
   apiBase: document.getElementById('apiBase'),
   email: document.getElementById('email'),
   password: document.getElementById('password'),
+  totp: document.getElementById('totp'),
   logoutBtn: document.getElementById('logoutBtn'),
   adminEmail: document.getElementById('adminEmail'),
   metrics: document.getElementById('metrics'),
@@ -19,6 +20,18 @@ const els = {
   usersMeta: document.getElementById('usersMeta'),
   searchInput: document.getElementById('searchInput'),
   searchBtn: document.getElementById('searchBtn'),
+  notice: document.getElementById('notice'),
+  actionModal: document.getElementById('actionModal'),
+  modalTitle: document.getElementById('modalTitle'),
+  modalMessage: document.getElementById('modalMessage'),
+  modalInputWrap: document.getElementById('modalInputWrap'),
+  modalInputLabel: document.getElementById('modalInputLabel'),
+  modalInput: document.getElementById('modalInput'),
+  modalOutputWrap: document.getElementById('modalOutputWrap'),
+  modalOutput: document.getElementById('modalOutput'),
+  copyOutputBtn: document.getElementById('copyOutputBtn'),
+  modalCancelBtn: document.getElementById('modalCancelBtn'),
+  modalConfirmBtn: document.getElementById('modalConfirmBtn'),
 };
 
 function formatCurrency(value) {
@@ -47,6 +60,63 @@ function getSession() {
     token: localStorage.getItem(storageKeys.token) || '',
     email: localStorage.getItem(storageKeys.email) || '',
   };
+}
+
+let modalResolver = null;
+
+function showNotice(message, tone = 'success') {
+  els.notice.textContent = message;
+  els.notice.classList.remove('hidden', 'error');
+  if (tone === 'error') els.notice.classList.add('error');
+  window.setTimeout(() => {
+    els.notice.classList.add('hidden');
+  }, 3500);
+}
+
+function closeModal(payload = { confirmed: false, input: '' }) {
+  els.actionModal.classList.add('hidden');
+  if (modalResolver) {
+    modalResolver(payload);
+    modalResolver = null;
+  }
+}
+
+function openModal({
+  title,
+  message,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  showInput = false,
+  inputLabel = 'Details',
+  inputValue = '',
+  inputPlaceholder = '',
+  showOutput = false,
+  outputValue = '',
+  danger = false,
+  hideCancel = false,
+}) {
+  els.modalTitle.textContent = title;
+  els.modalMessage.textContent = message;
+  els.modalConfirmBtn.textContent = confirmLabel;
+  els.modalCancelBtn.textContent = cancelLabel;
+
+  els.modalInputWrap.classList.toggle('hidden', !showInput);
+  els.modalInputLabel.textContent = inputLabel;
+  els.modalInput.value = inputValue;
+  els.modalInput.placeholder = inputPlaceholder;
+
+  els.modalOutputWrap.classList.toggle('hidden', !showOutput);
+  els.modalOutput.value = outputValue;
+
+  els.modalConfirmBtn.classList.toggle('primary', !danger);
+  els.modalConfirmBtn.classList.toggle('danger-btn', danger);
+  els.modalCancelBtn.classList.toggle('hidden', hideCancel);
+
+  els.actionModal.classList.remove('hidden');
+
+  return new Promise((resolve) => {
+    modalResolver = resolve;
+  });
 }
 
 async function apiFetch(path, opts = {}) {
@@ -112,12 +182,95 @@ function renderUsers(payload) {
       <td>${user.email}</td>
       <td>${user.companyName || '-'}</td>
       <td>${user.subscription?.planKey || 'starter'}</td>
-      <td>${user.subscription?.status || 'free'}</td>
+      <td>${user.isSuspended ? 'suspended' : (user.subscription?.status || 'free')}</td>
       <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+      <td>
+        <div class="row gap-sm">
+          <button class="btn" data-action="suspend" data-user-id="${user.id}" data-user-email="${user.email}">${user.isSuspended ? 'Unsuspend' : 'Suspend'}</button>
+          <button class="btn" data-action="reset-password" data-user-id="${user.id}" data-user-email="${user.email}">Reset Password</button>
+          <button class="btn" data-action="cancel-sub" data-user-id="${user.id}" data-user-email="${user.email}">Cancel Sub</button>
+        </div>
+      </td>
     </tr>
   `).join('');
 
   els.usersMeta.textContent = `Showing ${users.length} of ${payload.total} users`;
+}
+
+async function handleUserAction(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+
+  const action = target.dataset.action;
+  const userId = target.dataset.userId;
+  const userEmail = target.dataset.userEmail;
+
+  if (!action || !userId) return;
+
+  try {
+    if (action === 'suspend') {
+      const shouldSuspend = target.textContent !== 'Unsuspend';
+      const prompt = await openModal({
+        title: shouldSuspend ? 'Suspend User' : 'Unsuspend User',
+        message: shouldSuspend
+          ? `Suspend ${userEmail}? They will be logged out immediately.`
+          : `Unsuspend ${userEmail} and restore access?`,
+        confirmLabel: shouldSuspend ? 'Suspend' : 'Unsuspend',
+        showInput: shouldSuspend,
+        inputLabel: 'Suspension reason',
+        inputValue: 'Suspended by admin',
+        inputPlaceholder: 'Reason shown internally',
+        danger: shouldSuspend,
+      });
+      if (!prompt.confirmed) return;
+
+      const reason = shouldSuspend ? (prompt.input || 'Suspended by admin') : '';
+      await apiFetch(`/admin/users/${userId}/suspend`, {
+        method: 'POST',
+        body: JSON.stringify({ suspended: shouldSuspend, reason }),
+      });
+      showNotice(shouldSuspend ? `User ${userEmail} suspended.` : `User ${userEmail} unsuspended.`);
+    }
+
+    if (action === 'reset-password') {
+      const confirm = await openModal({
+        title: 'Create Password Reset Link',
+        message: `Create a one-time reset token for ${userEmail}?`,
+        confirmLabel: 'Create Link',
+      });
+      if (!confirm.confirmed) return;
+
+      const result = await apiFetch(`/admin/users/${userId}/reset-password`, { method: 'POST' });
+
+      await openModal({
+        title: 'Reset Link Created',
+        message: `Share this link securely. It expires at ${new Date(result.expiresAt).toLocaleString()}.`,
+        confirmLabel: 'Done',
+        hideCancel: true,
+        showOutput: true,
+        outputValue: result.resetUrl,
+      });
+
+      showNotice(`Reset link generated for ${userEmail}.`);
+    }
+
+    if (action === 'cancel-sub') {
+      const confirm = await openModal({
+        title: 'Cancel Subscription',
+        message: `Cancel subscription at period end for ${userEmail}?`,
+        confirmLabel: 'Schedule Cancellation',
+        danger: true,
+      });
+      if (!confirm.confirmed) return;
+
+      await apiFetch(`/admin/users/${userId}/cancel-subscription`, { method: 'POST' });
+      showNotice(`Subscription cancellation scheduled for ${userEmail}.`);
+    }
+
+    await loadDashboard(els.searchInput.value);
+  } catch (error) {
+    showNotice(error.message || 'Action failed', 'error');
+  }
 }
 
 async function loadDashboard(search = '') {
@@ -137,12 +290,13 @@ els.loginForm.addEventListener('submit', async (event) => {
   const apiBase = cleanApiBase(els.apiBase.value);
   const email = String(els.email.value || '').trim().toLowerCase();
   const password = els.password.value;
+  const totp = String(els.totp.value || '').trim();
 
   try {
-    const res = await fetch(`${apiBase}/auth/login`, {
+    const res = await fetch(`${apiBase}/admin/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, totp }),
     });
 
     const body = await res.json();
@@ -166,6 +320,33 @@ els.searchBtn.addEventListener('click', async () => {
     await loadDashboard(els.searchInput.value);
   } catch (error) {
     showLogin(error.message || 'Session expired');
+  }
+});
+
+els.usersBody.addEventListener('click', handleUserAction);
+
+els.modalConfirmBtn.addEventListener('click', () => {
+  closeModal({ confirmed: true, input: els.modalInput.value.trim() });
+});
+
+els.modalCancelBtn.addEventListener('click', () => {
+  closeModal({ confirmed: false, input: '' });
+});
+
+els.actionModal.addEventListener('click', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.dataset.closeModal === 'true') {
+    closeModal({ confirmed: false, input: '' });
+  }
+});
+
+els.copyOutputBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(els.modalOutput.value);
+    showNotice('Reset URL copied to clipboard.');
+  } catch (error) {
+    showNotice('Unable to copy URL automatically.', 'error');
   }
 });
 

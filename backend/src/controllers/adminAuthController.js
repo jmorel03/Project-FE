@@ -1,0 +1,78 @@
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { authenticator } = require('otplib');
+const prisma = require('../lib/prisma');
+
+function parseCsv(value) {
+  return String(value || '')
+    .split(',')
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function parseTotpSecrets(value) {
+  const map = new Map();
+  String(value || '')
+    .split(',')
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .forEach((pair) => {
+      const [email, secret] = pair.split(':');
+      if (email && secret) map.set(email.trim().toLowerCase(), secret.trim());
+    });
+  return map;
+}
+
+function isAdminUser(user) {
+  const adminEmails = parseCsv(process.env.ADMIN_EMAILS);
+  const adminUserIds = parseCsv(process.env.ADMIN_USER_IDS);
+
+  return adminEmails.includes(String(user.email || '').toLowerCase())
+    || adminUserIds.includes(String(user.id || '').toLowerCase());
+}
+
+function signAdminAccessToken(userId) {
+  return jwt.sign(
+    { sub: userId, admin: true, admin2fa: true, scope: 'admin' },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '8h' },
+  );
+}
+
+exports.adminLogin = async (req, res, next) => {
+  try {
+    const { email, password, totp } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email: String(email || '').toLowerCase() } });
+    if (!user) return res.status(401).json({ error: 'Invalid admin credentials' });
+    if (user.isSuspended) return res.status(403).json({ error: 'Account suspended' });
+
+    const validPassword = await bcrypt.compare(String(password || ''), user.password);
+    if (!validPassword) return res.status(401).json({ error: 'Invalid admin credentials' });
+
+    if (!isAdminUser(user)) return res.status(403).json({ error: 'Admin access required' });
+
+    const totpSecrets = parseTotpSecrets(process.env.ADMIN_TOTP_SECRETS);
+    const secret = totpSecrets.get(String(user.email || '').toLowerCase());
+
+    if (!secret) {
+      return res.status(503).json({ error: 'TOTP is not configured for this admin account' });
+    }
+
+    const isValidTotp = authenticator.check(String(totp || '').replace(/\s+/g, ''), secret);
+    if (!isValidTotp) return res.status(401).json({ error: 'Invalid TOTP code' });
+
+    const accessToken = signAdminAccessToken(user.id);
+
+    return res.json({
+      accessToken,
+      admin: {
+        id: user.id,
+        email: user.email,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Admin',
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+};

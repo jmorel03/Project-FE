@@ -32,3 +32,10 @@ exports.requireAdmin = async (req, res, next) => {
     return next(error);
   }
 };
+
+exports.requireAdmin2FA = (req, res, next) => {
+  if (req.auth?.admin === true && req.auth?.admin2fa === true) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Admin 2FA session required' });
+};

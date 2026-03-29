@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 
 const signAccess = (userId) =>
@@ -74,6 +75,10 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    if (user.isSuspended) {
+      return res.status(403).json({ error: 'Account suspended' });
+    }
+
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -112,6 +117,20 @@ exports.refresh = async (req, res, next) => {
     const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
     if (!stored || stored.expiresAt < new Date()) {
       return res.status(401).json({ error: 'Refresh token revoked or expired' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, isSuspended: true },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (user.isSuspended) {
+      await prisma.refreshToken.deleteMany({ where: { userId: payload.sub } });
+      return res.status(403).json({ error: 'Account suspended' });
     }
 
     // Rotate token
@@ -198,5 +217,43 @@ exports.updateProfile = async (req, res, next) => {
     res.json(user);
   } catch (err) {
     next(err);
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'token and newPassword are required' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const resetRecord = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: { id: true, userId: true, expiresAt: true, usedAt: true },
+    });
+
+    if (!resetRecord || resetRecord.usedAt || resetRecord.expiresAt <= new Date()) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetRecord.userId },
+        data: { password: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({ where: { userId: resetRecord.userId } }),
+    ]);
+
+    return res.json({ message: 'Password reset successful. Please log in again.' });
+  } catch (err) {
+    return next(err);
   }
 };
