@@ -55,50 +55,194 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Company</th>
-                <th>Plan</th>
-                <th>Status</th>
-                <th>Joined</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="usersBody"></tbody>
-          </table>
-        </div>
-        <p id="usersMeta" class="muted"></p>
-      </div>
-    </section>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>Xpensist Admin</title>
+              <link rel="stylesheet" href="./styles.css" />
+            </head>
+            <body>
 
-    <div id="actionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-backdrop" data-close-modal="true"></div>
-      <div class="modal-panel card">
-        <h3 id="modalTitle"></h3>
-        <p id="modalMessage" class="muted"></p>
-        <div id="modalInputWrap" class="hidden">
-          <label>
-            <span id="modalInputLabel">Details</span>
-            <input id="modalInput" type="text" />
-          </label>
-        </div>
-        <div id="modalOutputWrap" class="hidden">
-          <label>
-            Reset URL
-            <input id="modalOutput" type="text" readonly />
-          </label>
-          <button id="copyOutputBtn" class="btn" type="button">Copy</button>
-        </div>
-        <div class="row gap-sm modal-actions">
-          <button id="modalCancelBtn" class="btn" type="button">Cancel</button>
-          <button id="modalConfirmBtn" class="btn primary" type="button">Confirm</button>
-        </div>
-      </div>
-    </div>
-  </main>
+              <!-- LOGIN SCREEN -->
+              <div id="loginScreen" class="login-screen">
+                <div class="login-card">
+                  <div class="login-brand">
+                    <div class="login-logo">X</div>
+                    <h1>Xpensist Admin</h1>
+                    <p>Owner access only &middot; TOTP required</p>
+                  </div>
+                  <form id="loginForm">
+                    <label>API Base URL<input id="apiBase" type="text" placeholder="https://api.xpensist.com/api" required /></label>
+                    <label>Email<input id="email" type="email" placeholder="owner@xpensist.com" required /></label>
+                    <label>Password
+                      <div class="input-wrap">
+                        <input id="password" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required />
+                        <button type="button" id="togglePassword" class="input-addon">Show</button>
+                      </div>
+                    </label>
+                    <label>TOTP Code<input id="totp" type="text" inputmode="numeric" maxlength="8" placeholder="123456" required /></label>
+                    <button class="btn primary full" type="submit" id="loginBtn">Sign In</button>
+                    <p id="loginError" class="error-msg"></p>
+                  </form>
+                </div>
+              </div>
 
-  <script src="./app.js"></script>
-</body>
-</html>
+              <!-- APP LAYOUT -->
+              <div id="appLayout" class="app-layout hidden">
+
+                <!-- SIDEBAR -->
+                <aside class="sidebar">
+                  <div class="sidebar-brand">
+                    <div class="sidebar-logo">X</div>
+                    <span>Admin Panel</span>
+                  </div>
+                  <nav class="sidebar-nav">
+                    <button class="nav-item active" data-tab="overview">
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      Overview
+                    </button>
+                    <button class="nav-item" data-tab="users">
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                      Users
+                      <span id="usersBadge" class="nav-badge"></span>
+                    </button>
+                  </nav>
+                  <div class="sidebar-footer">
+                    <div class="sidebar-user">
+                      <div class="sidebar-avatar" id="sidebarAvatar">A</div>
+                      <span id="adminEmail" class="sidebar-email"></span>
+                    </div>
+                    <button id="logoutBtn" class="btn-logout">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                      Logout
+                    </button>
+                  </div>
+                </aside>
+
+                <!-- MAIN AREA -->
+                <div class="main-area">
+                  <header class="topbar">
+                    <div class="topbar-left">
+                      <h1 id="pageTitle">Overview</h1>
+                      <span id="lastUpdated" class="last-updated"></span>
+                    </div>
+                    <div class="topbar-right">
+                      <div id="connectionStatus" class="conn-status connected">
+                        <span class="conn-dot"></span> Connected
+                      </div>
+                      <button id="refreshBtn" class="btn-icon" title="Refresh data">
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                      </button>
+                    </div>
+                  </header>
+
+                  <main class="content">
+
+                    <!-- OVERVIEW TAB -->
+                    <section id="overviewView" class="view">
+                      <div class="metrics-grid" id="metrics"></div>
+                      <div class="two-col-grid">
+                        <div class="card">
+                          <h3 class="card-title">Recent Signups</h3>
+                          <div id="recentUsers" class="recent-list"></div>
+                        </div>
+                        <div class="card">
+                          <h3 class="card-title">Platform Health</h3>
+                          <div id="healthList" class="health-list"></div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <!-- USERS TAB -->
+                    <section id="usersView" class="view hidden">
+                      <div class="filter-bar card">
+                        <div class="filter-row">
+                          <div class="search-wrap">
+                            <svg class="search-icon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            <input id="searchInput" type="text" placeholder="Search name, email, company&hellip;" />
+                          </div>
+                          <div class="filter-controls">
+                            <select id="planFilter">
+                              <option value="">All Plans</option>
+                              <option value="starter">Starter (Free)</option>
+                              <option value="professional">Professional</option>
+                              <option value="business">Business</option>
+                            </select>
+                            <select id="statusFilter">
+                              <option value="">All Status</option>
+                              <option value="active">Active</option>
+                              <option value="trialing">Trialing</option>
+                              <option value="free">Free</option>
+                              <option value="suspended">Suspended</option>
+                            </select>
+                            <button id="searchBtn" class="btn primary">Search</button>
+                            <button id="exportBtn" class="btn">Export CSV</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="card table-card">
+                        <div class="table-wrap">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>User</th>
+                                <th>Plan</th>
+                                <th>Status</th>
+                                <th>Invoices</th>
+                                <th>Period End</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody id="usersBody"></tbody>
+                          </table>
+                        </div>
+                        <div class="table-footer">
+                          <span id="usersMeta" class="muted"></span>
+                          <div class="pagination" id="pagination"></div>
+                        </div>
+                      </div>
+                    </section>
+
+                  </main>
+                </div>
+              </div>
+
+              <!-- TOAST CONTAINER -->
+              <div id="toastContainer" class="toast-container"></div>
+
+              <!-- ACTION MODAL -->
+              <div id="actionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+                <div class="modal-backdrop" data-close-modal="true"></div>
+                <div class="modal-panel card">
+                  <div class="modal-header">
+                    <h3 id="modalTitle"></h3>
+                    <button class="modal-close" data-close-modal="true" aria-label="Close">&times;</button>
+                  </div>
+                  <p id="modalMessage" class="muted modal-body-text"></p>
+                  <div id="modalInputWrap" class="hidden modal-field">
+                    <label>
+                      <span id="modalInputLabel">Details</span>
+                      <input id="modalInput" type="text" />
+                    </label>
+                  </div>
+                  <div id="modalOutputWrap" class="hidden modal-field">
+                    <label>
+                      Reset URL
+                      <div class="output-wrap">
+                        <input id="modalOutput" type="text" readonly />
+                        <button id="copyOutputBtn" class="btn" type="button">Copy</button>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="modal-actions">
+                    <button id="modalCancelBtn" class="btn" type="button">Cancel</button>
+                    <button id="modalConfirmBtn" class="btn primary" type="button">Confirm</button>
+                  </div>
+                </div>
+              </div>
+
+              <script src="./app.js"></script>
+            </body>
+            </html>

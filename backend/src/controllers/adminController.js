@@ -74,22 +74,59 @@ exports.getOverview = async (req, res, next) => {
   }
 };
 
+function resolveUserPlan(subscriptions) {
+  if (!subscriptions || subscriptions.length === 0) {
+    return { status: 'free', planKey: 'starter', stripePriceId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false };
+  }
+
+  // Prefer any active or trialing subscription first.
+  const active = subscriptions.find((s) => s.status === 'active' || s.status === 'trialing');
+  if (active) return active;
+
+  // Fall back to starter for anyone with only canceled/expired subscriptions.
+  return { status: 'free', planKey: 'starter', stripePriceId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false };
+}
+
 exports.getUsers = async (req, res, next) => {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const search = String(req.query.search || '').trim();
+    const planFilter = String(req.query.plan || '').trim().toLowerCase();
+    const statusFilter = String(req.query.status || '').trim().toLowerCase();
 
-    const where = search
-      ? {
-          OR: [
-            { email: { contains: search, mode: 'insensitive' } },
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { companyName: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {};
+    const conditions = [];
+
+    if (search) {
+      conditions.push({
+        OR: [
+          { email: { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+          { companyName: { contains: search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    // Status filter
+    if (statusFilter === 'suspended') {
+      conditions.push({ isSuspended: true });
+    } else if (statusFilter === 'active') {
+      conditions.push({ subscriptions: { some: { status: 'active' } } });
+    } else if (statusFilter === 'trialing') {
+      conditions.push({ subscriptions: { some: { status: 'trialing' } } });
+    } else if (statusFilter === 'free') {
+      conditions.push({ subscriptions: { none: { status: { in: ['active', 'trialing'] } } } });
+    }
+
+    // Plan filter
+    if (planFilter === 'starter') {
+      conditions.push({ subscriptions: { none: { status: { in: ['active', 'trialing'] } } } });
+    } else if (planFilter === 'professional' || planFilter === 'business') {
+      conditions.push({ subscriptions: { some: { status: { in: ['active', 'trialing'] }, planKey: planFilter } } });
+    }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const [total, users] = await Promise.all([
       prisma.user.count({ where }),
@@ -110,13 +147,17 @@ exports.getUsers = async (req, res, next) => {
           createdAt: true,
           subscriptions: {
             orderBy: { createdAt: 'desc' },
-            take: 1,
+            take: 10,
             select: {
               status: true,
               planKey: true,
               stripePriceId: true,
               currentPeriodEnd: true,
+              cancelAtPeriodEnd: true,
             },
+          },
+          _count: {
+            select: { invoices: true },
           },
         },
       }),
@@ -136,7 +177,8 @@ exports.getUsers = async (req, res, next) => {
         suspendedAt: user.suspendedAt,
         suspensionReason: user.suspensionReason,
         createdAt: user.createdAt,
-        subscription: user.subscriptions[0] || null,
+        subscription: resolveUserPlan(user.subscriptions),
+        invoiceCount: user._count.invoices,
       })),
     });
   } catch (err) {
