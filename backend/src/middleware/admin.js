@@ -3,7 +3,7 @@ const prisma = require('../lib/prisma');
 function parseCsv(value) {
   return String(value || '')
     .split(',')
-    .map((v) => v.trim().toLowerCase())
+    .map((v) => v.trim().replace(/^['\"]|['\"]$/g, '').toLowerCase())
     .filter(Boolean);
 }
 

@@ -6,7 +6,7 @@ const prisma = require('../lib/prisma');
 function parseCsv(value) {
   return String(value || '')
     .split(',')
-    .map((v) => v.trim().toLowerCase())
+    .map((v) => v.trim().replace(/^['\"]|['\"]$/g, '').toLowerCase())
     .filter(Boolean);
 }
 
@@ -14,11 +14,16 @@ function parseTotpSecrets(value) {
   const map = new Map();
   String(value || '')
     .split(',')
-    .map((pair) => pair.trim())
+    .map((pair) => pair.trim().replace(/^['\"]|['\"]$/g, ''))
     .filter(Boolean)
     .forEach((pair) => {
       const [email, secret] = pair.split(':');
-      if (email && secret) map.set(email.trim().toLowerCase(), secret.trim());
+      if (email && secret) {
+        map.set(
+          email.trim().replace(/^['\"]|['\"]$/g, '').toLowerCase(),
+          secret.trim().replace(/^['\"]|['\"]$/g, ''),
+        );
+      }
     });
   return map;
 }
