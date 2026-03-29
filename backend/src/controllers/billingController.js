@@ -244,28 +244,59 @@ exports.getBillingSummary = async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const customer = await getOrCreateCustomer(stripe, user);
+    const currentCustomer = await getOrCreateCustomer(stripe, user);
 
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customer.id,
-      status: 'all',
-      limit: 10,
-      expand: ['data.items.data.price.product'],
+    // Collect every Stripe customer ID we know about for this user:
+    // DB records may reference a different customer than the one returned by getOrCreateCustomer
+    // (e.g. if metadata search failed and a new customer was created mid-session).
+    const knownCustomerIds = [
+      ...new Set([
+        currentCustomer.id,
+        ...persisted.map((s) => s.stripeCustomerId).filter(Boolean),
+      ]),
+    ];
+
+    // Fetch subscriptions from ALL known customers and merge them.
+    const subArrays = await Promise.all(
+      knownCustomerIds.map((cid) =>
+        stripe.subscriptions
+          .list({ customer: cid, status: 'all', limit: 10, expand: ['data.items.data.price.product'] })
+          .then((r) => r.data)
+          .catch(() => []),
+      ),
+    );
+    const seenSubIds = new Set();
+    const allStripeSubs = subArrays.flat().filter((sub) => {
+      if (seenSubIds.has(sub.id)) return false;
+      seenSubIds.add(sub.id);
+      return true;
     });
 
+    // Sync any newly-found active subscriptions into the DB so future calls are faster.
+    for (const sub of allStripeSubs) {
+      if (sub.status === 'active' || sub.status === 'trialing') {
+        const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+        if (customerId) {
+          await upsertSubscriptionRecord({ stripeCustomerId: customerId, stripeSubscription: sub }).catch(() => null);
+        }
+      }
+    }
+
+    // Payment methods come from the primary (current) customer.
     const paymentMethods = await stripe.paymentMethods.list({
-      customer: customer.id,
+      customer: currentCustomer.id,
       type: 'card',
       limit: 10,
     });
 
-    const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+    const defaultPaymentMethodId = currentCustomer.invoice_settings?.default_payment_method;
+
     res.json({
       customer: {
-        id: customer.id,
-        email: customer.email,
+        id: currentCustomer.id,
+        email: currentCustomer.email,
       },
-      subscriptions: subscriptions.data.map((sub) => ({
+      subscriptions: allStripeSubs.map((sub) => ({
         id: sub.id,
         status: sub.status,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
