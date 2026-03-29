@@ -1,7 +1,8 @@
 const prisma = require('../lib/prisma');
 const { startOfMonth, endOfMonth, subDays } = require('date-fns');
-const crypto = require('crypto');
 const Stripe = require('stripe');
+const bcrypt = require('bcryptjs');
+const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -223,56 +224,63 @@ exports.suspendUser = async (req, res, next) => {
   }
 };
 
-exports.triggerPasswordReset = async (req, res, next) => {
+exports.resetUserPassword = async (req, res, next) => {
   try {
     const userId = req.params.id;
+    const newPassword = String(req.body?.newPassword || '');
+
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      return res.status(400).json({ error: strength.message });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, password: true },
     });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-    const ttlMinutes = Math.max(parseInt(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES, 10) || 60, 5);
-    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+    const reused = await isRecentPasswordReuse(user.id, newPassword, user.password);
+    if (reused) {
+      return res.status(400).json({ error: 'New password cannot match current or last 5 passwords' });
+    }
 
-    // Invalidate previous active reset tokens for this user.
-    await prisma.passwordResetToken.updateMany({
-      where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
-      data: { usedAt: new Date() },
-    });
+    const nextHash = await bcrypt.hash(newPassword, 12);
 
-    await prisma.passwordResetToken.create({
-      data: {
-        userId,
-        tokenHash,
-        expiresAt,
-      },
-    });
-
-    const clientBase = String(process.env.CLIENT_URL || '').replace(/\/+$/, '') || 'http://localhost:5173';
-    const resetUrl = `${clientBase}/reset-password?token=${rawToken}`;
+    await prisma.$transaction([
+      prisma.passwordHistory.create({
+        data: {
+          userId,
+          passwordHash: user.password,
+        },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { password: nextHash },
+      }),
+      prisma.passwordResetToken.updateMany({
+        where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({ where: { userId } }),
+    ]);
 
     await logAdminAction(req, {
-      action: 'user.password_reset_requested',
+      action: 'user.password_reset_admin',
       targetUserId: userId,
-      metadata: { expiresAt: expiresAt.toISOString() },
+      metadata: { email: user.email },
     });
 
     res.json({
-      message: 'Password reset token created. Share reset URL securely with user.',
-      user,
-      resetUrl,
-      resetToken: rawToken,
-      expiresAt: expiresAt.toISOString(),
+      message: `Password updated for ${user.email}. User has been signed out of active sessions.`,
+      user: { id: user.id, email: user.email },
     });
   } catch (err) {
     await logAdminAction(req, {
-      action: 'user.password_reset_requested',
+      action: 'user.password_reset_admin',
       targetUserId: req.params.id,
       status: 'failed',
       metadata: { error: err.message },

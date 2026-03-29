@@ -24,7 +24,11 @@ const profileSchema = z.object({
 });
 
 const passwordSchema = z.object({
-  password: z.string().min(8, 'Min 8 characters'),
+  currentPassword: z.string().min(1, 'Current password is required'),
+  password: z.string()
+    .min(8, 'Minimum 8 characters')
+    .regex(/[A-Z]/, 'Must include at least one uppercase letter')
+    .regex(/[^A-Za-z0-9]/, 'Must include at least one special character'),
   confirm: z.string(),
 }).refine((d) => d.password === d.confirm, { message: 'Passwords do not match', path: ['confirm'] });
 
@@ -81,8 +85,17 @@ export default function Settings() {
   });
 
   const passwordMutation = useMutation({
-    mutationFn: ({ password }) => authService.updateProfile({ password }),
-    onSuccess: () => { toast.success('Password updated'); resetPw(); },
+    mutationFn: ({ currentPassword, password }) => authService.changePassword({
+      currentPassword,
+      newPassword: password,
+    }),
+    onSuccess: () => {
+      toast.success('Password updated. Please log in again.');
+      resetPw();
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/login';
+    },
     onError: (err) => toast.error(err?.response?.data?.error || 'Update failed'),
   });
 
@@ -134,8 +147,10 @@ export default function Settings() {
       <div className="card p-6 space-y-4">
         <h2 className="text-base font-semibold text-gray-900">Change Password</h2>
         <form onSubmit={handlePw((d) => passwordMutation.mutate(d))} className="space-y-4">
+          <Input label="Current Password" type="password" placeholder="Enter current password" error={pwErr.currentPassword?.message} {...regPw('currentPassword')} />
           <Input label="New Password" type="password" placeholder="Min. 8 characters" error={pwErr.password?.message} {...regPw('password')} />
           <Input label="Confirm Password" type="password" placeholder="Repeat password" error={pwErr.confirm?.message} {...regPw('confirm')} />
+          <p className="text-xs text-gray-500">Password must include at least 8 characters, one uppercase letter, and one special character. You also cannot reuse your last 5 passwords.</p>
           <div className="flex justify-end">
             <button type="submit" disabled={pwSubmitting || passwordMutation.isPending} className="btn-primary">
               {passwordMutation.isPending ? 'Updating…' : 'Update Password'}

@@ -80,6 +80,7 @@ export const authService = {
   logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
   getMe: () => api.get('/auth/me').then((r) => r.data),
   updateProfile: (data) => api.put('/auth/me', data).then((r) => r.data),
+  changePassword: (data) => api.post('/auth/change-password', data).then((r) => r.data),
 };
 
 export const clientService = {

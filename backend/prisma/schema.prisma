@@ -35,12 +35,24 @@ model User {
 
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  passwordHistories PasswordHistory[]
   clients       Client[]
   invoices      Invoice[]
   invoiceReminders InvoiceReminder[]
   expenses      Expense[]
   categories    ExpenseCategory[]
   subscriptions BillingSubscription[]
+}
+
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model RefreshToken {

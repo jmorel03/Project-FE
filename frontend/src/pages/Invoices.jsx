@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { invoiceService } from '../services/api';
 import { Badge } from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -21,6 +22,7 @@ export default function Invoices() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', { status, page }],
@@ -31,7 +33,7 @@ export default function Invoices() {
     mutationFn: invoiceService.delete,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success('Invoice deleted');
+      setDeleteTarget(null);
     },
     onError: (err) => toast.error(err?.response?.data?.error || 'Delete failed'),
   });
@@ -126,9 +128,7 @@ export default function Invoices() {
                         Edit
                       </Link>
                       <button
-                        onClick={() => {
-                          if (confirm('Delete this invoice?')) deleteMutation.mutate(inv.id);
-                        }}
+                        onClick={() => setDeleteTarget(inv)}
                         className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
                       >
                         Delete
@@ -152,6 +152,37 @@ export default function Invoices() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Invoice"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Are you sure you want to delete {deleteTarget?.invoiceNumber || 'this invoice'}? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn bg-red-600 text-white hover:bg-red-700"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete Invoice'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

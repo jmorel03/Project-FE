@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
+const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 
 const signAccess = (userId) =>
   jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
@@ -17,6 +18,11 @@ const signRefresh = (userId) =>
 exports.register = async (req, res, next) => {
   try {
     const { email, password, firstName, lastName, companyName } = req.body;
+
+    const strength = validatePasswordStrength(password);
+    if (!strength.valid) {
+      return res.status(400).json({ error: strength.message });
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -200,8 +206,8 @@ exports.updateProfile = async (req, res, next) => {
       data.email = req.body.email;
     }
 
-    if (req.body.password) {
-      data.password = await bcrypt.hash(req.body.password, 12);
+    if (req.body.password !== undefined) {
+      return res.status(400).json({ error: 'Use /auth/change-password to update your password' });
     }
 
     const user = await prisma.user.update({
@@ -217,6 +223,60 @@ exports.updateProfile = async (req, res, next) => {
     res.json(user);
   } catch (err) {
     next(err);
+  }
+};
+
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true, password: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const isCurrentValid = await bcrypt.compare(String(currentPassword), user.password);
+    if (!isCurrentValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      return res.status(400).json({ error: strength.message });
+    }
+
+    const reused = await isRecentPasswordReuse(user.id, newPassword, user.password);
+    if (reused) {
+      return res.status(400).json({ error: 'New password cannot match your current or last 5 passwords' });
+    }
+
+    const nextHash = await bcrypt.hash(String(newPassword), 12);
+
+    await prisma.$transaction([
+      prisma.passwordHistory.create({
+        data: {
+          userId: user.id,
+          passwordHash: user.password,
+        },
+      }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: { password: nextHash },
+      }),
+      prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+    ]);
+
+    return res.json({ message: 'Password updated successfully. Please log in again.' });
+  } catch (err) {
+    return next(err);
   }
 };
 
@@ -238,9 +298,34 @@ exports.resetPassword = async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
-    const hashed = await bcrypt.hash(newPassword, 12);
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      return res.status(400).json({ error: strength.message });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: resetRecord.userId },
+      select: { id: true, password: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const reused = await isRecentPasswordReuse(user.id, newPassword, user.password);
+    if (reused) {
+      return res.status(400).json({ error: 'New password cannot match your current or last 5 passwords' });
+    }
+
+    const hashed = await bcrypt.hash(String(newPassword), 12);
 
     await prisma.$transaction([
+      prisma.passwordHistory.create({
+        data: {
+          userId: user.id,
+          passwordHash: user.password,
+        },
+      }),
       prisma.user.update({
         where: { id: resetRecord.userId },
         data: { password: hashed },

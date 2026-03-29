@@ -7,7 +7,7 @@ const {
 	getOverview,
 	getUsers,
 	suspendUser,
-	triggerPasswordReset,
+	resetUserPassword,
 	cancelUserSubscription,
 } = require('../controllers/adminController');
 const { adminLogin } = require('../controllers/adminAuthController');
@@ -30,7 +30,10 @@ router.post('/users/:id/suspend', [
 	body('suspended').optional().isBoolean(),
 	body('reason').optional().isString().isLength({ max: 500 }),
 ], validate, suspendUser);
-router.post('/users/:id/reset-password', [param('id').isUUID()], validate, triggerPasswordReset);
+router.post('/users/:id/reset-password', [
+	param('id').isUUID(),
+	body('newPassword').isString().isLength({ min: 8 }),
+], validate, resetUserPassword);
 router.post('/users/:id/cancel-subscription', [param('id').isUUID()], validate, cancelUserSubscription);
 
 module.exports = router;
