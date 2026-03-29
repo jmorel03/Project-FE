@@ -80,12 +80,27 @@ try {
   adminHost = '';
 }
 
+function isAdminHostRequest(req) {
+  const requestHost = String(req.hostname || '').toLowerCase();
+  return Boolean(adminHost) && requestHost === String(adminHost).toLowerCase();
+}
+
+app.get('/admin-health', (req, res) => {
+  res.json({
+    ok: true,
+    requestHost: req.hostname || null,
+    expectedAdminHost: adminHost || null,
+    adminHostMatched: isAdminHostRequest(req),
+    hasAdminPanel,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 if (hasAdminPanel && adminHost) {
   const adminStatic = express.static(adminPanelDir);
 
   app.use((req, res, next) => {
-    const requestHost = String(req.hostname || '').toLowerCase();
-    const isAdminHost = requestHost === String(adminHost).toLowerCase();
+    const isAdminHost = isAdminHostRequest(req);
 
     if (!isAdminHost || req.path.startsWith('/api/')) {
       return next();
