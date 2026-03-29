@@ -31,7 +31,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.2),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.18),_transparent_32%),linear-gradient(180deg,_#f8fafc_0%,_#f0f7ff_52%,_#eefaf5_100%)] flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Back to home */}
         <div className="mb-6">
@@ -42,8 +42,8 @@ export default function Login() {
         </div>
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-primary-600 rounded-xl mb-4">
+        <div className="mb-8 text-center">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900">
             <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -52,7 +52,7 @@ export default function Login() {
           <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
         </div>
 
-        <div className="card p-8">
+        <div className="card p-8 shadow-lg shadow-slate-200/70">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
               label="Email address"

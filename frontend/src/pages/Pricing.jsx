@@ -74,7 +74,7 @@ export default function Pricing() {
   const recoveredRevenue = monthlyInvoices * 45;
 
   return (
-    <div className="marketing-shell bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.14),_transparent_32%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_38%,_#f8fafc_100%)]">
+    <div className="marketing-shell marketing-reveal bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.14),_transparent_32%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_38%,_#f8fafc_100%)]">
       <PublicNav />
 
       <section className="pt-24 pb-14">
@@ -87,18 +87,18 @@ export default function Pricing() {
             The free plan gets the fundamentals in place. Paid plans unlock automated reminders, stronger analytics, and higher-touch billing workflows.
           </p>
 
-          <div className="mt-8 inline-flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="mt-8 inline-flex items-center rounded-full border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
             <button
               type="button"
               onClick={() => setAnnualBilling(false)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${annualBilling ? 'text-slate-500' : 'bg-slate-900 text-white'}`}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${annualBilling ? 'text-slate-500' : 'bg-slate-900 text-white shadow-sm'}`}
             >
               Monthly
             </button>
             <button
               type="button"
               onClick={() => setAnnualBilling(true)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${annualBilling ? 'bg-emerald-500 text-white' : 'text-slate-500'}`}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${annualBilling ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500'}`}
             >
               Annual
             </button>
@@ -116,7 +116,7 @@ export default function Pricing() {
             return (
               <div
                 key={plan.key}
-                className={`rounded-[28px] border p-8 transition ${highlighted ? 'border-primary-300 bg-slate-900 text-white shadow-2xl' : 'border-slate-200 bg-white shadow-sm'}`}
+                className={`rounded-[28px] border p-8 transition ${highlighted ? 'border-primary-300 bg-slate-900 text-white shadow-2xl' : 'border-slate-200 bg-white/95 shadow-sm hover:-translate-y-0.5 hover:shadow-md'}`}
               >
                 {highlighted && (
                   <span className="mb-4 inline-flex rounded-full bg-emerald-400 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-slate-900">
@@ -142,7 +142,7 @@ export default function Pricing() {
                 <Link
                   to="/register"
                   className={`mt-6 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition ${
-                    highlighted ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-primary-600 text-white hover:bg-primary-700'
+                    highlighted ? 'bg-white text-slate-900 hover:-translate-y-0.5 hover:bg-slate-100' : 'bg-primary-600 text-white hover:-translate-y-0.5 hover:bg-primary-700'
                   }`}
                 >
                   {plan.cta || 'Get Started'}
@@ -164,7 +164,7 @@ export default function Pricing() {
 
       <section className="pb-16">
         <div className="marketing-wrap grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="rounded-[28px] border border-slate-200 bg-white/95 p-8 shadow-sm backdrop-blur">
             <h2 className="text-2xl font-bold text-slate-900">Plan Comparison</h2>
             <p className="mt-2 text-sm text-slate-600">The biggest jump in value is moving from manual follow-up to reminder automation and stronger operating visibility.</p>
 
@@ -192,12 +192,12 @@ export default function Pricing() {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-8 shadow-sm">
+          <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-8 shadow-sm backdrop-blur">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-700">ROI Estimator</p>
             <h2 className="mt-3 text-2xl font-bold text-slate-900">See what cleaner workflows are worth.</h2>
             <p className="mt-2 text-sm text-slate-600">This is a directional estimate based on faster admin handling and better reminder follow-up.</p>
 
-            <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-emerald-100">
+            <div className="mt-6 rounded-2xl bg-white/95 p-5 shadow-sm ring-1 ring-emerald-100">
               <div className="flex items-center justify-between text-sm font-medium text-slate-700">
                 <span>Monthly invoices</span>
                 <span>{monthlyInvoices}</span>
@@ -236,7 +236,7 @@ export default function Pricing() {
             ['Cleaner Operations', 'Onboarding checklists and dashboard guidance shorten the time between signup and first successful invoice.'],
             ['Stronger Retention', 'Perk-based plans make upgrading feel like an operations decision, not just a billing event.'],
           ].map(([title, text]) => (
-            <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+            <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50/75 p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
             </div>
@@ -249,10 +249,10 @@ export default function Pricing() {
           <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Start with the workflow you have now, then grow into automation.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">You do not need enterprise complexity on day one. You do need invoicing, follow-up, and reporting that get sharper as the business grows.</p>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:bg-primary-700">
+            <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:-translate-y-0.5 hover:bg-primary-700">
               Create Free Account
             </Link>
-            <Link to="/login" className="rounded-xl border border-slate-300 px-8 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+            <Link to="/login" className="rounded-xl border border-slate-300 bg-white/90 px-8 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-400">
               Sign In
             </Link>
           </div>

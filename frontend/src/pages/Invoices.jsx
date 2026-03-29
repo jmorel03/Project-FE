@@ -117,9 +117,12 @@ export default function Invoices() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="page-title">Invoices</h1>
+    <div className="page-reveal space-y-6">
+      <div className="page-intro flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="page-title">Invoices</h1>
+          <p className="page-subtitle">Track invoice status, send in bulk, and keep collections moving with less manual work.</p>
+        </div>
         <Link to="/invoices/new" className="btn-primary">
           <PlusIcon className="w-4 h-4" />
           New Invoice
@@ -152,7 +155,7 @@ export default function Invoices() {
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="table-shell">
         {selectedCount > 0 && (
           <div className="flex flex-col gap-2 border-b border-gray-100 bg-primary-50/50 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium text-primary-800">{selectedCount} selected</p>
@@ -197,7 +200,7 @@ export default function Invoices() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="table-head-row">
                 <th className="w-10 px-3 py-3 text-left">
                   <input
                     type="checkbox"
@@ -207,18 +210,18 @@ export default function Invoices() {
                     aria-label="Select all invoices"
                   />
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Invoice</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Client</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Due Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+                <th className="table-head-cell px-6 py-3">Invoice</th>
+                <th className="table-head-cell px-4 py-3">Client</th>
+                <th className="table-head-cell px-4 py-3">Issue Date</th>
+                <th className="table-head-cell px-4 py-3">Due Date</th>
+                <th className="table-head-cell px-4 py-3">Status</th>
+                <th className="table-head-cell px-6 py-3 text-right">Amount</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-100">
               {filtered.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={inv.id} className="table-row">
                   <td className="px-3 py-3.5">
                     <input
                       type="checkbox"
@@ -259,7 +262,7 @@ export default function Invoices() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3">
             <span className="text-sm text-gray-500">{total} total</span>
             <div className="flex gap-2">
               <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="btn-secondary py-1 px-3 text-xs">Previous</button>
@@ -290,7 +293,7 @@ export default function Invoices() {
             </button>
             <button
               type="button"
-              className="btn bg-red-600 text-white hover:bg-red-700"
+              className="btn-danger"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
               disabled={deleteMutation.isPending}
             >

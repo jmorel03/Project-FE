@@ -111,10 +111,10 @@ export default function InvoiceView() {
         : 'Send Overdue Reminder';
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="page-reveal space-y-6 max-w-4xl">
       {/* Back + Actions */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
+      <div className="page-intro flex flex-wrap items-center justify-between gap-3">
+        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700">
           <ArrowLeftIcon className="w-4 h-4" />
           Invoices
         </button>
@@ -158,7 +158,7 @@ export default function InvoiceView() {
       </div>
 
       {/* Invoice card */}
-      <div className="card overflow-hidden">
+      <div className="table-shell">
         {/* Header band */}
         <div className="bg-primary-600 px-8 py-6 flex justify-between items-start">
           <div>
@@ -195,16 +195,16 @@ export default function InvoiceView() {
           <div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-2 text-xs font-semibold text-gray-500 uppercase">Description</th>
-                  <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase w-20">Qty</th>
-                  <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase w-28">Unit Price</th>
-                  <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase w-28">Total</th>
+                <tr className="table-head-row">
+                  <th className="table-head-cell py-2">Description</th>
+                  <th className="table-head-cell w-20 py-2 text-right">Qty</th>
+                  <th className="table-head-cell w-28 py-2 text-right">Unit Price</th>
+                  <th className="table-head-cell w-28 py-2 text-right">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-slate-100">
                 {invoice.items.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} className="table-row">
                     <td className="py-3 text-gray-800">{item.description}</td>
                     <td className="py-3 text-right text-gray-600">{item.quantity}</td>
                     <td className="py-3 text-right text-gray-600">{fmt(item.unitPrice, invoice.currency)}</td>

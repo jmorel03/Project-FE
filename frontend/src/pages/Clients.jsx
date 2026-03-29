@@ -65,9 +65,12 @@ export default function Clients() {
   const totalPages = Math.ceil(total / 20);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="page-title">Clients</h1>
+    <div className="page-reveal space-y-6">
+      <div className="page-intro flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="page-title">Clients</h1>
+          <p className="page-subtitle">Keep contact records clean and connect client history to invoice and collections workflows.</p>
+        </div>
         <button onClick={openCreate} className="btn-primary">
           <PlusIcon className="w-4 h-4" /> Add Client
         </button>
@@ -83,7 +86,7 @@ export default function Clients() {
         />
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="table-shell">
         {isLoading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600" /></div>
         ) : clients.length === 0 ? (
@@ -94,18 +97,18 @@ export default function Clients() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Company</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Invoices</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Since</th>
+              <tr className="table-head-row">
+                <th className="table-head-cell px-6 py-3">Name</th>
+                <th className="table-head-cell px-4 py-3">Company</th>
+                <th className="table-head-cell px-4 py-3">Email</th>
+                <th className="table-head-cell px-4 py-3">Invoices</th>
+                <th className="table-head-cell px-4 py-3">Since</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-100">
               {clients.map((client) => (
-                <tr key={client.id} className="hover:bg-gray-50">
+                <tr key={client.id} className="table-row">
                   <td className="px-6 py-3.5 font-medium text-gray-900">{client.name}</td>
                   <td className="px-4 py-3.5 text-gray-500">{client.company || '—'}</td>
                   <td className="px-4 py-3.5 text-gray-500">{client.email || '—'}</td>
@@ -126,7 +129,7 @@ export default function Clients() {
           </table>
         )}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3">
             <span className="text-sm text-gray-500">{total} total</span>
             <div className="flex gap-2">
               <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="btn-secondary py-1 px-3 text-xs">Previous</button>

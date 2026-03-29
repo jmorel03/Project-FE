@@ -9,6 +9,9 @@
     --brand-ink: #0f172a;
     --brand-muted: #475569;
     --brand-surface: #f8fafc;
+    --app-bg: #f3f7fb;
+    --panel-bg: rgba(255, 255, 255, 0.84);
+    --panel-border: rgba(148, 163, 184, 0.28);
   }
 
   * {
@@ -17,7 +20,11 @@
 
   body {
     font-family: 'DM Sans', sans-serif;
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply text-gray-900 antialiased;
+    background:
+      radial-gradient(circle at 8% 12%, rgba(14, 165, 233, 0.14), transparent 24%),
+      radial-gradient(circle at 90% 8%, rgba(16, 185, 129, 0.12), transparent 26%),
+      linear-gradient(180deg, #f8fbff 0%, var(--app-bg) 46%, #eef3f9 100%);
   }
 
   h1,
@@ -42,44 +49,77 @@
 }
 
 @layer components {
+  .app-shell {
+    @apply min-h-screen;
+    background: linear-gradient(120deg, rgba(241, 245, 249, 0.86), rgba(255, 255, 255, 0.58));
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-slate-200/70 bg-white/90 shadow-sm backdrop-blur;
+  }
+
   .input {
-    @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm
+    @apply block w-full rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-sm
            placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
            disabled:bg-gray-50 disabled:text-gray-500;
   }
 
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold
-           text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500
-           focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold
+           text-white shadow-md shadow-primary-200/70 hover:-translate-y-0.5 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500
+           focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold
-           text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50
-           focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 transition-colors;
+    @apply inline-flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-semibold
+           text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:-translate-y-0.5 hover:bg-slate-50
+           focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 transition-all;
   }
 
   .btn-danger {
-    @apply inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold
-           text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500
-           focus:ring-offset-2 disabled:opacity-50 transition-colors;
+    @apply inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold
+           text-white shadow-sm shadow-red-200 hover:-translate-y-0.5 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500
+           focus:ring-offset-2 disabled:opacity-50 transition-all;
   }
 
   .card {
-    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+    @apply rounded-2xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur;
   }
 
   .page-title {
-    @apply text-2xl font-bold text-gray-900;
+    @apply text-3xl font-bold tracking-tight text-slate-900;
+  }
+
+  .page-subtitle {
+    @apply mt-2 text-sm text-slate-600;
+  }
+
+  .page-intro {
+    @apply rounded-[28px] border border-slate-200/80 bg-white/90 px-6 py-5 shadow-sm backdrop-blur sm:px-8;
+  }
+
+  .table-shell {
+    @apply overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur;
+  }
+
+  .table-head-row {
+    @apply border-b border-slate-200 bg-slate-50/90;
+  }
+
+  .table-head-cell {
+    @apply text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .table-row {
+    @apply transition-colors hover:bg-slate-50/80;
   }
 
   .stat-card {
-    @apply card p-6 flex flex-col gap-2;
+    @apply card flex flex-col gap-2 p-6;
   }
 
   .marketing-shell {
@@ -92,5 +132,86 @@
 
   .hero-chip {
     @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm;
+  }
+
+  .page-reveal > * {
+    animation: reveal-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .page-reveal > *:nth-child(1) {
+    animation-delay: 30ms;
+  }
+
+  .page-reveal > *:nth-child(2) {
+    animation-delay: 90ms;
+  }
+
+  .page-reveal > *:nth-child(3) {
+    animation-delay: 140ms;
+  }
+
+  .page-reveal > *:nth-child(4) {
+    animation-delay: 190ms;
+  }
+
+  .page-reveal > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+
+  .page-reveal > *:nth-child(n + 6) {
+    animation-delay: 290ms;
+  }
+
+  .marketing-reveal > section,
+  .marketing-reveal > footer {
+    animation: reveal-up 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .marketing-reveal > section:nth-of-type(1) {
+    animation-delay: 40ms;
+  }
+
+  .marketing-reveal > section:nth-of-type(2) {
+    animation-delay: 100ms;
+  }
+
+  .marketing-reveal > section:nth-of-type(3) {
+    animation-delay: 150ms;
+  }
+
+  .marketing-reveal > section:nth-of-type(4) {
+    animation-delay: 200ms;
+  }
+
+  .marketing-reveal > section:nth-of-type(5) {
+    animation-delay: 250ms;
+  }
+
+  .marketing-reveal > section:nth-of-type(n + 6),
+  .marketing-reveal > footer {
+    animation-delay: 300ms;
+  }
+}
+
+@keyframes reveal-up {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-reveal > * {
+    animation: none !important;
+  }
+
+  .marketing-reveal > section,
+  .marketing-reveal > footer {
+    animation: none !important;
   }
 }

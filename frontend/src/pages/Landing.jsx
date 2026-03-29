@@ -46,7 +46,7 @@ export default function Landing() {
   useDocumentTitle('Xpensist');
 
   return (
-    <div className="marketing-shell overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.15),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.16),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_44%,_#f8fafc_100%)]">
+    <div className="marketing-shell marketing-reveal overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.15),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.16),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_44%,_#f8fafc_100%)]">
       <PublicNav />
 
       <section className="relative pt-24 pb-20">
@@ -62,10 +62,10 @@ export default function Landing() {
                 Xpensist combines invoicing, expense tracking, reminders, and dashboard guidance so the admin side of your business stops stealing attention from the actual work.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:bg-primary-700">
+                <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:-translate-y-0.5 hover:bg-primary-700">
                   Start Free Today
                 </Link>
-                <Link to="/pricing" className="rounded-xl border border-slate-300 px-8 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                <Link to="/pricing" className="rounded-xl border border-slate-300 bg-white/90 px-8 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-400">
                   See Plans
                 </Link>
               </div>
@@ -76,7 +76,7 @@ export default function Landing() {
                   ['Reminders', 'Stay ahead of due dates'],
                   ['Reporting', 'See revenue and spend clearly'],
                 ].map(([value, label]) => (
-                  <div key={label} className="rounded-2xl border border-slate-200 bg-white/80 px-5 py-4 shadow-sm backdrop-blur">
+                  <div key={label} className="rounded-2xl border border-slate-200 bg-white/85 px-5 py-4 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md">
                     <p className="text-lg font-extrabold text-slate-900">{value}</p>
                     <p className="text-sm text-slate-600">{label}</p>
                   </div>
@@ -121,7 +121,7 @@ export default function Landing() {
       </section>
 
       <section className="py-6">
-        <div className="marketing-wrap grid gap-4 rounded-[28px] border border-slate-200 bg-white/90 px-6 py-6 shadow-sm md:grid-cols-4">
+        <div className="marketing-wrap grid gap-4 rounded-[28px] border border-slate-200 bg-white/92 px-6 py-6 shadow-sm backdrop-blur md:grid-cols-4">
           {[
             ['Faster Collections', 'Reminder workflows and follow-up visibility'],
             ['Cleaner Reporting', 'Revenue, expenses, and payment activity in one place'],
@@ -146,7 +146,7 @@ export default function Landing() {
 
           <div className="mt-10 grid gap-7 md:grid-cols-2">
             {featureCards.map(({ name, description, icon: Icon }) => (
-              <div key={name} className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+              <div key={name} className="rounded-[28px] border border-slate-200 bg-white/95 p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                 <div className="inline-flex rounded-2xl bg-primary-100 p-3 text-primary-700">
                   <Icon className="h-7 w-7" />
                 </div>
@@ -167,7 +167,7 @@ export default function Landing() {
           </div>
           <div className="space-y-4">
             {workflowSteps.map(([title, text], index) => (
-              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm transition hover:border-slate-300">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary-700">Step {index + 1}</p>
                 <h3 className="mt-2 text-lg font-semibold text-slate-900">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
@@ -179,17 +179,17 @@ export default function Landing() {
 
       <section className="py-20">
         <div className="marketing-wrap grid gap-8 lg:grid-cols-3">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+          <div className="rounded-[28px] border border-slate-200 bg-white/95 p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <ShieldCheckIcon className="h-8 w-8 text-emerald-600" />
             <h3 className="mt-4 text-xl font-semibold text-slate-900">Built for trust</h3>
             <p className="mt-3 text-sm leading-7 text-slate-600">Secure authentication, structured invoice records, and support-ready contact flows create the baseline confidence people expect from a finance tool.</p>
           </div>
-          <div className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+          <div className="rounded-[28px] border border-slate-200 bg-white/95 p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <BanknotesIcon className="h-8 w-8 text-primary-600" />
             <h3 className="mt-4 text-xl font-semibold text-slate-900">Built for collections</h3>
             <p className="mt-3 text-sm leading-7 text-slate-600">The dashboard now surfaces due-soon, overdue, and at-risk invoices so follow-up becomes a planned routine instead of reactive cleanup.</p>
           </div>
-          <div className="rounded-[28px] border border-slate-200 bg-white p-7 shadow-sm">
+          <div className="rounded-[28px] border border-slate-200 bg-white/95 p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <CheckCircleIcon className="h-8 w-8 text-cyan-600" />
             <h3 className="mt-4 text-xl font-semibold text-slate-900">Built to grow with you</h3>
             <p className="mt-3 text-sm leading-7 text-slate-600">Start with invoicing and expenses. Add subscription upgrades when your operation needs stronger reminders, analytics, and support.</p>
@@ -202,10 +202,10 @@ export default function Landing() {
           <h2 className="text-3xl font-bold sm:text-4xl">Run the admin side of the business like it matters.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-primary-100">Create invoices, track expenses, follow up on payments, and give yourself a dashboard that actually tells you what to do next.</p>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link to="/register" className="rounded-xl bg-white px-8 py-3 text-sm font-semibold text-primary-700 transition hover:bg-slate-100">
+            <Link to="/register" className="rounded-xl bg-white px-8 py-3 text-sm font-semibold text-primary-700 transition hover:-translate-y-0.5 hover:bg-slate-100">
               Create Free Account
             </Link>
-            <Link to="/pricing" className="rounded-xl border border-white/40 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+            <Link to="/pricing" className="rounded-xl border border-white/40 px-8 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10">
               Compare Plans
             </Link>
           </div>

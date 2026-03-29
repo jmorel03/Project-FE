@@ -132,8 +132,11 @@ export default function Settings() {
   });
 
   return (
-    <div className="space-y-8 max-w-2xl">
-      <h1 className="page-title">Settings</h1>
+    <div className="page-reveal space-y-8 max-w-2xl">
+      <div className="page-intro">
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Manage profile details, security controls, and workspace preferences in one place.</p>
+      </div>
 
       {/* Profile */}
       <div className="card p-6 space-y-4">

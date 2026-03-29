@@ -123,7 +123,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="page-reveal space-y-8">
       <div className="rounded-[28px] bg-slate-900 px-6 py-7 text-white shadow-xl sm:px-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>

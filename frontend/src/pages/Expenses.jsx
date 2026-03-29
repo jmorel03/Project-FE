@@ -144,9 +144,12 @@ export default function Expenses() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="page-title">Expenses</h1>
+    <div className="page-reveal space-y-6">
+      <div className="page-intro flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="page-title">Expenses</h1>
+          <p className="page-subtitle">Move expenses through review, reimbursement, and reporting with clear workflow states.</p>
+        </div>
         <button onClick={openCreate} className="btn-primary">
           <PlusIcon className="w-4 h-4" /> Add Expense
         </button>
@@ -200,7 +203,7 @@ export default function Expenses() {
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="table-shell">
         {isLoading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600" /></div>
         ) : expenses.length === 0 ? (
@@ -211,19 +214,19 @@ export default function Expenses() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendor</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Flags</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+              <tr className="table-head-row">
+                <th className="table-head-cell px-6 py-3">Date</th>
+                <th className="table-head-cell px-4 py-3">Vendor</th>
+                <th className="table-head-cell px-4 py-3">Category</th>
+                <th className="table-head-cell px-4 py-3">Status</th>
+                <th className="table-head-cell px-4 py-3">Flags</th>
+                <th className="table-head-cell px-6 py-3 text-right">Amount</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-100">
               {expenses.map((exp) => (
-                <tr key={exp.id} className="hover:bg-gray-50">
+                <tr key={exp.id} className="table-row">
                   <td className="px-6 py-3.5 text-gray-500">{format(new Date(exp.date), 'MMM dd, yyyy')}</td>
                   <td className="px-4 py-3.5">
                     <p className="font-medium text-gray-900">{exp.vendor}</p>
@@ -311,7 +314,7 @@ export default function Expenses() {
           </table>
         )}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3">
             <span className="text-sm text-gray-500">{total} total</span>
             <div className="flex gap-2">
               <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="btn-secondary py-1 px-3 text-xs">Previous</button>

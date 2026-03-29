@@ -91,11 +91,11 @@ export default function Subscription() {
     ?? null;
 
   return (
-    <div className="space-y-8 max-w-5xl">
-      <div className="flex items-start justify-between gap-4">
+    <div className="page-reveal space-y-8 max-w-5xl">
+      <div className="page-intro flex items-start justify-between gap-4">
         <div>
           <h1 className="page-title">Subscription</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage plans, payment methods, and billing details.</p>
+          <p className="page-subtitle">Manage plans, payment methods, and billing details.</p>
         </div>
         <button
           type="button"

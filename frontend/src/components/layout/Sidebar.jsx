@@ -19,39 +19,43 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-60 shrink-0 flex flex-col bg-white border-r border-gray-200 h-screen">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200/80 bg-white/88 backdrop-blur">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-gray-100">
-        <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-          <DocumentTextIcon className="w-4.5 h-4.5 text-white" />
+      <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 shadow-sm">
+          <DocumentTextIcon className="h-5 w-5 text-emerald-300" />
         </div>
-        <span className="text-lg font-bold text-gray-900">Xpensist</span>
+        <div>
+          <p className="text-base font-bold text-slate-900">Xpensist</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Operations OS</p>
+        </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             end
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`
             }
           >
-            <Icon className="w-5 h-5 shrink-0" />
+            <Icon className="h-5 w-5 shrink-0" />
             {label}
           </NavLink>
         ))}
       </nav>
 
       {/* Bottom branding */}
-      <div className="px-5 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-400">Xpensist v1.0</p>
+      <div className="border-t border-slate-200 px-5 py-4">
+        <p className="text-xs font-medium text-slate-500">Xpensist v1.0</p>
+        <p className="mt-1 text-[11px] text-slate-400">Built for cleaner billing workflows</p>
       </div>
     </aside>
   );
