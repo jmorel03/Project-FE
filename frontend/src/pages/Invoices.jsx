@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { PlusIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
@@ -23,6 +23,8 @@ export default function Invoices() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', { status, page }],
@@ -49,6 +51,70 @@ export default function Invoices() {
           i.client?.name.toLowerCase().includes(search.toLowerCase()),
       )
     : invoices;
+
+  const selectedCount = selectedIds.length;
+  const allFilteredSelected = filtered.length > 0 && filtered.every((inv) => selectedIds.includes(inv.id));
+
+  useEffect(() => {
+    const visibleIds = new Set(invoices.map((inv) => inv.id));
+    setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
+  }, [invoices]);
+
+  function toggleInvoiceSelection(invoiceId) {
+    setSelectedIds((prev) => (
+      prev.includes(invoiceId)
+        ? prev.filter((id) => id !== invoiceId)
+        : [...prev, invoiceId]
+    ));
+  }
+
+  function toggleSelectAllFiltered() {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !filtered.some((inv) => inv.id === id)));
+      return;
+    }
+
+    const filteredIds = filtered.map((inv) => inv.id);
+    setSelectedIds((prev) => Array.from(new Set([...prev, ...filteredIds])));
+  }
+
+  async function runBulkAction(action) {
+    if (selectedIds.length === 0 || bulkPending) return;
+
+    const actionLabel = action === 'send'
+      ? 'email and send'
+      : action === 'mark-sent'
+        ? 'mark as sent'
+        : 'mark as draft';
+
+    if (!window.confirm(`Apply '${actionLabel}' to ${selectedIds.length} selected invoice(s)?`)) return;
+
+    setBulkPending(true);
+
+    try {
+      const operations = selectedIds.map((id) => {
+        if (action === 'send') return invoiceService.send(id);
+        if (action === 'mark-sent') return invoiceService.update(id, { status: 'SENT', sendNow: false });
+        return invoiceService.update(id, { status: 'DRAFT' });
+      });
+
+      const results = await Promise.allSettled(operations);
+      const succeeded = results.filter((result) => result.status === 'fulfilled').length;
+      const failed = results.length - succeeded;
+
+      if (succeeded > 0) {
+        toast.success(`${succeeded} invoice(s) updated`);
+      }
+      if (failed > 0) {
+        toast.error(`${failed} invoice(s) failed`);
+      }
+
+      setSelectedIds([]);
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+    } finally {
+      setBulkPending(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -87,6 +153,38 @@ export default function Invoices() {
 
       {/* Table */}
       <div className="card overflow-hidden">
+        {selectedCount > 0 && (
+          <div className="flex flex-col gap-2 border-b border-gray-100 bg-primary-50/50 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-primary-800">{selectedCount} selected</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary py-1.5 px-3 text-xs"
+                onClick={() => runBulkAction('mark-draft')}
+                disabled={bulkPending}
+              >
+                Mark Draft
+              </button>
+              <button
+                type="button"
+                className="btn-secondary py-1.5 px-3 text-xs"
+                onClick={() => runBulkAction('mark-sent')}
+                disabled={bulkPending}
+              >
+                Mark Sent
+              </button>
+              <button
+                type="button"
+                className="btn-primary py-1.5 px-3 text-xs"
+                onClick={() => runBulkAction('send')}
+                disabled={bulkPending}
+              >
+                {bulkPending ? 'Processing…' : 'Send Now'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600" />
@@ -100,6 +198,15 @@ export default function Invoices() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="w-10 px-3 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAllFiltered}
+                    aria-label="Select all invoices"
+                  />
+                </th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Invoice</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Client</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Issue Date</th>
@@ -112,6 +219,15 @@ export default function Invoices() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-3 py-3.5">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      checked={selectedIds.includes(inv.id)}
+                      onChange={() => toggleInvoiceSelection(inv.id)}
+                      aria-label={`Select invoice ${inv.invoiceNumber}`}
+                    />
+                  </td>
                   <td className="px-6 py-3.5">
                     <Link to={`/invoices/${inv.id}`} className="font-medium text-primary-600 hover:underline">
                       {inv.invoiceNumber}

@@ -34,6 +34,40 @@ function calcTotals(items, taxRate = 0, discountRate = 0) {
   };
 }
 
+async function sendInvoiceForUser(invoiceId, userId) {
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, userId },
+    include: { client: true, items: { orderBy: { order: 'asc' } } },
+  });
+
+  if (!invoice) {
+    const error = new Error('Invoice not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (!invoice.client.email) {
+    const error = new Error('Client has no email address');
+    error.status = 400;
+    throw error;
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const pdfBuffer = await generateInvoicePdf(invoice, user);
+  await sendInvoiceEmail({ invoice, client: invoice.client, user, pdfBuffer });
+
+  return prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { status: 'SENT', sentAt: new Date() },
+    include: {
+      client: true,
+      items: { orderBy: { order: 'asc' } },
+      payments: { orderBy: { paidAt: 'desc' } },
+      reminders: { orderBy: { sentAt: 'desc' }, take: 5 },
+    },
+  });
+}
+
 exports.getInvoices = async (req, res, next) => {
   try {
     const { status, clientId, from, to, page = 1, limit = 20 } = req.query;
@@ -97,12 +131,27 @@ exports.createInvoice = async (req, res, next) => {
       return res.status(403).json({ error: limitHit.message, code: limitHit.code, limit: limitHit.limit, used: limitHit.used });
     }
 
-    const { clientId, dueDate, currency, items, taxRate = 0, discountRate = 0, notes, terms, status = 'DRAFT' } = req.body;
+    const {
+      clientId,
+      dueDate,
+      currency,
+      items,
+      taxRate = 0,
+      discountRate = 0,
+      notes,
+      terms,
+      status = 'DRAFT',
+      sendNow = false,
+    } = req.body;
 
     const client = await prisma.client.findFirst({ where: { id: clientId, userId: req.userId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
+    if (sendNow && !client.email) {
+      return res.status(400).json({ error: 'Client has no email address' });
+    }
 
     const totals = calcTotals(items, Number(taxRate), Number(discountRate));
+    const shouldMarkAsSent = status === 'SENT' || sendNow;
     let invoice = null;
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const invoiceNumber = await nextInvoiceNumber(req.userId);
@@ -119,7 +168,8 @@ exports.createInvoice = async (req, res, next) => {
             discountRate: Number(discountRate),
             notes,
             terms,
-            status,
+            status: shouldMarkAsSent ? 'SENT' : status,
+            sentAt: shouldMarkAsSent ? new Date() : null,
             ...totals,
             items: {
               create: items.map((item, idx) => ({
@@ -151,6 +201,10 @@ exports.createInvoice = async (req, res, next) => {
       });
     }
 
+    if (sendNow) {
+      invoice = await sendInvoiceForUser(invoice.id, req.userId);
+    }
+
     res.status(201).json(invoice);
   } catch (err) {
     next(err);
@@ -167,7 +221,7 @@ exports.updateInvoice = async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot edit a paid invoice' });
     }
 
-    const { items, taxRate, discountRate, dueDate, currency, notes, terms, status } = req.body;
+    const { items, taxRate, discountRate, dueDate, currency, notes, terms, status, sendNow } = req.body;
     const data = {};
 
     if (dueDate) data.dueDate = new Date(dueDate);
@@ -175,6 +229,12 @@ exports.updateInvoice = async (req, res, next) => {
     if (notes !== undefined) data.notes = notes;
     if (terms !== undefined) data.terms = terms;
     if (status) data.status = status;
+    if (status === 'SENT' && existing.status !== 'SENT') {
+      data.sentAt = new Date();
+    }
+    if (status === 'DRAFT') {
+      data.sentAt = null;
+    }
 
     if (items) {
       const totals = calcTotals(
@@ -199,7 +259,7 @@ exports.updateInvoice = async (req, res, next) => {
       };
     }
 
-    const invoice = await prisma.invoice.update({
+    let invoice = await prisma.invoice.update({
       where: { id: req.params.id },
       data,
       include: {
@@ -208,6 +268,10 @@ exports.updateInvoice = async (req, res, next) => {
         payments: true,
       },
     });
+
+    if (sendNow) {
+      invoice = await sendInvoiceForUser(req.params.id, req.userId);
+    }
 
     res.json(invoice);
   } catch (err) {
@@ -228,23 +292,7 @@ exports.deleteInvoice = async (req, res, next) => {
 
 exports.sendInvoice = async (req, res, next) => {
   try {
-    const invoice = await prisma.invoice.findFirst({
-      where: { id: req.params.id, userId: req.userId },
-      include: { client: true, items: { orderBy: { order: 'asc' } } },
-    });
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
-    if (!invoice.client.email) {
-      return res.status(400).json({ error: 'Client has no email address' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: req.userId } });
-    const pdfBuffer = await generateInvoicePdf(invoice, user);
-    await sendInvoiceEmail({ invoice, client: invoice.client, user, pdfBuffer });
-
-    const updated = await prisma.invoice.update({
-      where: { id: req.params.id },
-      data: { status: 'SENT', sentAt: new Date() },
-    });
+    const updated = await sendInvoiceForUser(req.params.id, req.userId);
 
     res.json(updated);
   } catch (err) {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { invoiceService, clientService } from '../services/api';
 import Input, { Select, Textarea } from '../components/ui/Input';
+import Modal from '../components/ui/Modal';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -36,6 +37,9 @@ export default function InvoiceCreate() {
   const { id } = useParams();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
+  const [submitMode, setSubmitMode] = useState('draft');
+  const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   useDocumentTitle(isEditing ? 'Xpensist | Edit Invoice' : 'Xpensist | New Invoice');
 
@@ -84,7 +88,13 @@ export default function InvoiceCreate() {
   const mutation = useMutation({
     mutationFn: (data) => isEditing ? invoiceService.update(id, data) : invoiceService.create(data),
     onSuccess: (data) => {
-      toast.success(isEditing ? 'Invoice updated' : 'Invoice created');
+      toast.success(
+        submitMode === 'send'
+          ? (isEditing ? 'Invoice updated and sent' : 'Invoice created and sent')
+          : submitMode === 'sent'
+            ? (isEditing ? 'Invoice updated as sent' : 'Invoice created as sent')
+          : (isEditing ? 'Invoice updated' : 'Invoice created'),
+      );
       navigate(`/invoices/${data.id}`);
     },
     onError: (err) => toast.error(err?.response?.data?.error || 'Failed to save invoice'),
@@ -101,11 +111,34 @@ export default function InvoiceCreate() {
 
   const clients = clientsData?.clients || [];
 
+  function buildSubmitPayload(data) {
+    return {
+      ...data,
+      status: submitMode === 'draft' ? 'DRAFT' : 'SENT',
+      sendNow: submitMode === 'send',
+    };
+  }
+
+  function onSubmit(data) {
+    const payload = buildSubmitPayload(data);
+
+    if (submitMode === 'send') {
+      setPendingPayload(payload);
+      setSendConfirmOpen(true);
+      return;
+    }
+
+    mutation.mutate(payload);
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
       <h1 className="page-title">{isEditing ? 'Edit Invoice' : 'New Invoice'}</h1>
 
-      <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-6">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-6"
+      >
         {/* Client + Dates */}
         <div className="card p-6 space-y-4">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Invoice Details</h2>
@@ -239,11 +272,93 @@ export default function InvoiceCreate() {
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
           <button type="button" onClick={() => navigate(-1)} className="btn-secondary">Cancel</button>
-          <button type="submit" disabled={isSubmitting} className="btn-primary">
-            {isSubmitting ? 'Saving…' : isEditing ? 'Update Invoice' : 'Create Invoice'}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            onClick={() => setSubmitMode('draft')}
+            className="btn-secondary"
+          >
+            {isSubmitting && submitMode === 'draft'
+              ? 'Saving…'
+              : isEditing
+                ? 'Save Draft'
+                : 'Create Draft'}
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            onClick={() => setSubmitMode('sent')}
+            className="btn-secondary"
+          >
+            {isSubmitting && submitMode === 'sent'
+              ? 'Saving…'
+              : isEditing
+                ? 'Mark as Sent'
+                : 'Create as Sent'}
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            onClick={() => setSubmitMode('send')}
+            className="btn-primary"
+          >
+            {isSubmitting && submitMode === 'send'
+              ? 'Sending…'
+              : isEditing
+                ? 'Update & Send'
+                : 'Create & Send'}
           </button>
         </div>
+        <p className="text-right text-xs text-gray-500">
+          Draft keeps the invoice internal, Sent marks it as delivered without email, and Send emails it to the client now.
+        </p>
       </form>
+
+      <Modal
+        open={sendConfirmOpen}
+        onClose={() => {
+          if (mutation.isPending) return;
+          setSendConfirmOpen(false);
+          setPendingPayload(null);
+        }}
+        title={isEditing ? 'Confirm Update & Send' : 'Confirm Create & Send'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            This will email the invoice to the client immediately and mark it as sent. Continue?
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={mutation.isPending}
+              onClick={() => {
+                setSendConfirmOpen(false);
+                setPendingPayload(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={mutation.isPending || !pendingPayload}
+              onClick={() => {
+                if (!pendingPayload) return;
+                mutation.mutate(pendingPayload, {
+                  onSettled: () => {
+                    setSendConfirmOpen(false);
+                    setPendingPayload(null);
+                  },
+                });
+              }}
+            >
+              {mutation.isPending ? 'Sending…' : 'Confirm & Send'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

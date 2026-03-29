@@ -17,6 +17,8 @@ router.get('/:id/pdf', param('id').isUUID(), validate, downloadPdf);
 router.post('/', [
   body('clientId').isUUID().withMessage('Valid client ID is required'),
   body('dueDate').isISO8601().withMessage('Valid due date is required'),
+  body('status').optional().isIn(['DRAFT', 'SENT']),
+  body('sendNow').optional().isBoolean(),
   body('items').isArray({ min: 1 }).withMessage('At least one line item is required'),
   body('items.*.description').trim().notEmpty().withMessage('Item description is required'),
   body('items.*.quantity').isFloat({ min: 0.01 }).withMessage('Item quantity must be positive'),
@@ -26,6 +28,8 @@ router.post('/', [
 router.put('/:id', [
   param('id').isUUID(),
   body('dueDate').optional().isISO8601(),
+  body('status').optional().isIn(['DRAFT', 'SENT']),
+  body('sendNow').optional().isBoolean(),
   body('items').optional().isArray({ min: 1 }),
 ], validate, updateInvoice);
 
