@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -63,6 +65,36 @@ app.use(express.urlencoded({ extended: true }));
 // ─── Logging ─────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+}
+
+// ─── Admin Subdomain Static Panel ───────────────────────────────────────────
+const adminPanelDir = path.resolve(__dirname, '../../admin-panel');
+const hasAdminPanel = fs.existsSync(path.join(adminPanelDir, 'index.html'));
+let adminHost = '';
+
+try {
+  if (process.env.ADMIN_CLIENT_URL) {
+    adminHost = new URL(process.env.ADMIN_CLIENT_URL).hostname;
+  }
+} catch (error) {
+  adminHost = '';
+}
+
+if (hasAdminPanel && adminHost) {
+  const adminStatic = express.static(adminPanelDir);
+
+  app.use((req, res, next) => {
+    const requestHost = String(req.hostname || '').toLowerCase();
+    const isAdminHost = requestHost === String(adminHost).toLowerCase();
+
+    if (!isAdminHost || req.path.startsWith('/api/')) {
+      return next();
+    }
+
+    return adminStatic(req, res, () => {
+      res.sendFile(path.join(adminPanelDir, 'index.html'));
+    });
+  });
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────

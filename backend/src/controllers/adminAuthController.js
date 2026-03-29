@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { authenticator } = require('otplib');
+const otplib = require('otplib');
 const prisma = require('../lib/prisma');
 
 function parseCsv(value) {
@@ -59,8 +59,11 @@ exports.adminLogin = async (req, res, next) => {
       return res.status(503).json({ error: 'TOTP is not configured for this admin account' });
     }
 
-    const isValidTotp = authenticator.check(String(totp || '').replace(/\s+/g, ''), secret);
-    if (!isValidTotp) return res.status(401).json({ error: 'Invalid TOTP code' });
+    const verification = await otplib.verify({
+      token: String(totp || '').replace(/\s+/g, ''),
+      secret,
+    });
+    if (!verification?.valid) return res.status(401).json({ error: 'Invalid TOTP code' });
 
     const accessToken = signAdminAccessToken(user.id);
 
