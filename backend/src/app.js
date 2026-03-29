@@ -13,14 +13,23 @@ const dashboardRoutes = require('./routes/dashboard');
 const billingRoutes = require('./routes/billing');
 const billingWebhookRoutes = require('./routes/billingWebhook');
 const supportRoutes = require('./routes/support');
+const adminRoutes = require('./routes/admin');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
 // ─── Security ────────────────────────────────────────────────────────────────
+const allowedOrigins = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL, 'http://localhost:5173']
+  .filter(Boolean)
+  .map((origin) => String(origin).trim());
+
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin(origin, callback) {
+    // Allow server-to-server and local tools that send no Origin.
+    if (!origin) return callback(null, true);
+    return callback(null, allowedOrigins.includes(origin));
+  },
   credentials: true,
 }));
 
@@ -61,6 +70,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
