@@ -1,6 +1,6 @@
-# InvoiceFlow — Invoice & Expense SaaS
+# Xpensist — Invoicing, Expenses & Profit Dashboard
 
-A full-stack SaaS for invoicing and expense tracking, built with Node.js (Express) on the backend and React on the frontend, deployed via Cloudflare.
+A full-stack SaaS for invoicing, expense tracking, and financial reporting, built with Node.js (Express) on the backend and React on the frontend, deployed via Cloudflare.
 
 ---
 
@@ -122,6 +122,21 @@ VITE_API_URL=http://localhost:4000/api
 4. Use Cloudflare SSL/TLS in **Full (strict)** mode
 5. Optionally run `cloudflared tunnel` for zero-trust access
 
+
+## Production Deployment Checklist
+
+Before pushing to production, ensure:
+
+- [ ] **Environment Variables** — All `.env` values configured and secure (use secrets manager for production)
+- [ ] **Database** — PostgreSQL backed up and migrations run
+- [ ] **Frontend Build** — Tested locally with `npm run build`
+- [ ] **API Rate Limiting** — Enabled (already configured in app.js)
+- [ ] **CORS** — Correctly configured to match your domain
+- [ ] **Email/SMTP** — SendGrid API key and domain verification complete
+- [ ] **SEO/Metadata** — index.html title and meta tags correct
+- [ ] **SSL/TLS** — Cloudflare SSL/TLS set to **Full (strict)**
+- [ ] **Database Backups** — Automated backups configured
+- [ ] **CDN Cache** — Cloudflare caching rules set for static assets
 ---
 
 ## Option 1 (Implemented): Postgres + Cloudflare R2

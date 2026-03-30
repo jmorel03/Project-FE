@@ -5,6 +5,7 @@ import Landing from './pages/Landing';
 import Pricing from './pages/Pricing';
 import Faq from './pages/Faq';
 import ContactSupport from './pages/ContactSupport';
+import NotFound from './pages/NotFound';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/Dashboard';
@@ -56,7 +57,7 @@ function AppRoutes() {
         <Route path="/settings" element={<Settings />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
