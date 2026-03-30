@@ -98,7 +98,8 @@ export default function Subscription() {
   // Determine current plan key — prefer live Stripe subscription, fallback to DB record.
   const activeSub = subscriptions.find((s) => s.status === 'active' || s.status === 'trialing');
   const activePlanKey =
-    (activeSub?.items?.[0]?.priceId
+    activeSub?.planKey
+    ?? (activeSub?.items?.[0]?.priceId
       ? plans.find((p) => p.priceId === activeSub.items[0].priceId)?.key
       : null)
     ?? persistedSubscriptions.find((p) => p.status === 'active' || p.status === 'trialing')?.planKey

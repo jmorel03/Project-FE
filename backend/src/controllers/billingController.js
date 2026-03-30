@@ -332,6 +332,11 @@ exports.getBillingSummary = async (req, res, next) => {
       }
     }
 
+    const refreshedPersisted = await prisma.billingSubscription.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
     // Payment methods come from the primary (current) customer.
     const paymentMethods = await stripe.paymentMethods.list({
       customer: currentCustomer.id,
@@ -349,6 +354,7 @@ exports.getBillingSummary = async (req, res, next) => {
       subscriptions: allStripeSubs.map((sub) => ({
         id: sub.id,
         status: sub.status,
+        planKey: guessPlanKeyFromPrice(sub.items?.data?.[0]?.price?.id || null),
         cancelAtPeriodEnd: sub.cancel_at_period_end,
         currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
         items: sub.items.data.map((item) => ({
@@ -367,7 +373,7 @@ exports.getBillingSummary = async (req, res, next) => {
         expYear: pm.card?.exp_year,
         isDefault: defaultPaymentMethodId === pm.id,
       })),
-      persistedSubscriptions: persisted,
+      persistedSubscriptions: refreshedPersisted,
       billingConfigured: true,
     });
   } catch (err) {
@@ -422,6 +428,18 @@ exports.createCheckoutSession = async (req, res, next) => {
       const firstItem = currentPaidSub.items.data[0];
 
       if (firstItem.price.id === priceId) {
+        await upsertSubscriptionRecord({
+          stripeCustomerId: customer.id,
+          stripeSubscription: currentPaidSub,
+          userIdOverride: user.id,
+        });
+
+        await cancelOtherActiveSubscriptions({
+          stripe,
+          stripeCustomerId: customer.id,
+          keepSubscriptionId: currentPaidSub.id,
+        });
+
         return res.json({
           updated: true,
           unchanged: true,
