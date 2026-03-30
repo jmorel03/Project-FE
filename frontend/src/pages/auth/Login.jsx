@@ -76,6 +76,14 @@ export default function Login() {
           Don't have an account?{' '}
           <Link to="/register" className="text-primary-600 font-medium hover:underline">Create one</Link>
         </p>
+
+        <p className="mx-auto mt-4 max-w-xs text-center text-xs leading-5 text-gray-500">
+          By continuing, you agree to the{' '}
+          <Link to="/terms" className="text-primary-600 hover:underline">Terms of Service</Link>
+          {' '}and{' '}
+          <Link to="/privacy" className="text-primary-600 hover:underline">Privacy Policy</Link>
+          .
+        </p>
       </div>
     </div>
   );

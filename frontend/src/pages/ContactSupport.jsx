@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import PublicFooter from '../components/layout/PublicFooter';
 import PublicNav from '../components/layout/PublicNav';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { supportService } from '../services/api';
@@ -146,11 +147,7 @@ export default function ContactSupport() {
         </div>
       </section>
 
-      <footer className="bg-slate-900 px-4 py-8 text-slate-400 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl text-center">
-          <p>&copy; 2026 Xpensist. Invoicing and expense operations, without the spreadsheet drift.</p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

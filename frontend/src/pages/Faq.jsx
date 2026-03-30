@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDownIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
+import PublicFooter from '../components/layout/PublicFooter';
 import PublicNav from '../components/layout/PublicNav';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -119,11 +120,7 @@ export default function Faq() {
         </div>
       </section>
 
-      <footer className="bg-slate-900 px-4 py-8 text-slate-400 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl text-center">
-          <p>&copy; 2026 Xpensist. Invoicing and expense operations, without the spreadsheet drift.</p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CheckIcon } from '@heroicons/react/24/solid';
+import PublicFooter from '../components/layout/PublicFooter';
 import PublicNav from '../components/layout/PublicNav';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { billingService } from '../services/api';
@@ -274,11 +275,7 @@ export default function Pricing() {
         </div>
       </section>
 
-      <footer className="bg-slate-900 px-4 py-8 text-slate-400 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl text-center">
-          <p>&copy; 2026 Xpensist. Built for operators who want cleaner billing.</p>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

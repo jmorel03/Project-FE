@@ -5,6 +5,8 @@ import Landing from './pages/Landing';
 import Pricing from './pages/Pricing';
 import Faq from './pages/Faq';
 import ContactSupport from './pages/ContactSupport';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import NotFound from './pages/NotFound';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -42,6 +44,8 @@ function AppRoutes() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/faq" element={<Faq />} />
       <Route path="/contact-support" element={<ContactSupport />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
