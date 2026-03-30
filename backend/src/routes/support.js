@@ -32,10 +32,11 @@ router.post(
 
       return res.json({ success: true });
     } catch (err) {
+      console.error('Support contact-public error:', err.message, err.code);
       if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
         return res.status(500).json({ error: 'Support email is not configured yet. Please contact support directly.' });
       }
-      return res.status(500).json({ error: 'Unable to send support message right now. Please try again shortly.' });
+      return res.status(500).json({ error: `Email error: ${err.message}` });
     }
   }
 );
@@ -72,10 +73,11 @@ router.post(
 
       return res.json({ success: true });
     } catch (err) {
+      console.error('Support contact error:', err.message, err.code);
       if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
         return res.status(500).json({ error: 'Support email is not configured yet. Please contact support directly.' });
       }
-      return res.status(500).json({ error: 'Unable to send support message right now. Please try again shortly.' });
+      return res.status(500).json({ error: `Email error: ${err.message}` });
     }
   }
 );
