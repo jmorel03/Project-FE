@@ -118,7 +118,7 @@ async function getOrCreateCustomer(stripe, user) {
 
   if (existingByEmail.data.length > 0) {
     const customer = existingByEmail.data[0];
-    if (!customer.metadata?.userId) {
+    if (!customer.metadata?.userId || customer.metadata.userId !== user.id) {
       await stripe.customers.update(customer.id, {
         metadata: { ...(customer.metadata || {}), userId: user.id },
       });
@@ -136,10 +136,10 @@ async function getOrCreateCustomer(stripe, user) {
   });
 }
 
-async function upsertSubscriptionRecord({ stripeCustomerId, stripeSubscription }) {
+async function upsertSubscriptionRecord({ stripeCustomerId, stripeSubscription, userIdOverride = null }) {
   const stripe = getStripe();
   const customer = await stripe.customers.retrieve(stripeCustomerId);
-  const userId = customer?.metadata?.userId;
+  const userId = userIdOverride || customer?.metadata?.userId;
 
   if (!userId) {
     return;
@@ -511,10 +511,25 @@ exports.finalizeCheckoutSession = async (req, res, next) => {
 
     const customer = session.customer;
     const customerId = typeof customer === 'string' ? customer : customer.id;
+    const sessionUserId = session.metadata?.userId || null;
     const customerUserId = typeof customer === 'string' ? null : customer.metadata?.userId;
 
-    if (customerUserId && customerUserId !== user.id) {
+    if (sessionUserId && sessionUserId !== user.id) {
       return res.status(403).json({ error: 'Checkout session does not belong to this account' });
+    }
+
+    if (!sessionUserId && customerUserId && customerUserId !== user.id) {
+      return res.status(403).json({ error: 'Checkout session does not belong to this account' });
+    }
+
+    // Heal stale customer metadata so future webhook/sync events map to the right user.
+    if (!customerUserId || customerUserId !== user.id) {
+      await stripe.customers.update(customerId, {
+        metadata: {
+          ...(typeof customer === 'string' ? {} : (customer.metadata || {})),
+          userId: user.id,
+        },
+      }).catch(() => null);
     }
 
     const subscriptionId = typeof session.subscription === 'string'
@@ -528,6 +543,7 @@ exports.finalizeCheckoutSession = async (req, res, next) => {
     await upsertSubscriptionRecord({
       stripeCustomerId: customerId,
       stripeSubscription: subscription,
+      userIdOverride: user.id,
     });
 
     await cancelOtherActiveSubscriptions({
@@ -683,9 +699,20 @@ exports.handleStripeWebhook = async (req, res) => {
           const subscription = await stripe.subscriptions.retrieve(session.subscription, {
             expand: ['items.data.price'],
           });
+          const sessionUserId = session.metadata?.userId || null;
+
+          if (sessionUserId) {
+            await stripe.customers.update(session.customer, {
+              metadata: {
+                userId: sessionUserId,
+              },
+            }).catch(() => null);
+          }
+
           await upsertSubscriptionRecord({
             stripeCustomerId: session.customer,
             stripeSubscription: subscription,
+            userIdOverride: sessionUserId,
           });
           await cancelOtherActiveSubscriptions({
             stripe,
