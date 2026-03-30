@@ -14,6 +14,38 @@ function formatMoney(amount, currency = 'usd') {
   }).format(amount / 100);
 }
 
+function formatDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString();
+}
+
+function getSubscriptionLifecycle(sub) {
+  if (!sub) return [];
+
+  const trialEnd = formatDate(sub.trialEnd);
+  const periodEnd = formatDate(sub.currentPeriodEnd);
+  const cancelAt = formatDate(sub.cancelAt);
+  const lifecycle = [];
+
+  if (sub.status === 'trialing' && trialEnd) {
+    lifecycle.push({ label: 'Trial ends', value: trialEnd });
+  }
+
+  if (sub.cancelAtPeriodEnd) {
+    lifecycle.push({ label: 'Cancels on', value: periodEnd || cancelAt || 'Scheduled' });
+  } else if (periodEnd) {
+    lifecycle.push({ label: 'Renews on', value: periodEnd });
+  }
+
+  if ((sub.status === 'canceled' || sub.status === 'cancelled') && (cancelAt || periodEnd)) {
+    lifecycle.push({ label: 'Cancelled on', value: cancelAt || periodEnd });
+  }
+
+  return lifecycle;
+}
+
 const comparisonRows = [
   { label: 'Invoices', key: 'invoices' },
   { label: 'Team Members', key: 'teamMembers' },
@@ -147,11 +179,13 @@ export default function Subscription() {
                   {formatMoney(sub.items?.[0]?.amount, sub.items?.[0]?.currency)}
                   {sub.items?.[0]?.interval ? ` / ${sub.items[0].interval}` : ''}
                 </p>
-                {sub.currentPeriodEnd && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Current period ends: {new Date(sub.currentPeriodEnd).toLocaleDateString()}
-                  </p>
-                )}
+                <div className="mt-3 space-y-1">
+                  {getSubscriptionLifecycle(sub).map((item) => (
+                    <p key={`${sub.id}-${item.label}`} className="text-xs text-gray-500">
+                      {item.label}: {item.value}
+                    </p>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

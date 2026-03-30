@@ -356,6 +356,9 @@ exports.getBillingSummary = async (req, res, next) => {
         status: sub.status,
         planKey: guessPlanKeyFromPrice(sub.items?.data?.[0]?.price?.id || null),
         cancelAtPeriodEnd: sub.cancel_at_period_end,
+        cancelAt: sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null,
+        trialStart: sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
+        trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
         currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
         items: sub.items.data.map((item) => ({
           priceId: item.price.id,
