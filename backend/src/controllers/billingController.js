@@ -61,7 +61,7 @@ const PLAN_DETAILS = {
       automation: 'Advanced',
       reporting: 'Executive',
     },
-    trialDays: TRIAL_DAYS,
+    trialDays: 0,
   },
 };
 
@@ -442,7 +442,7 @@ exports.createCheckoutSession = async (req, res, next) => {
     }
 
     const baseUrl = getClientBaseUrl(req);
-    const trialDays = !hasPaidHistory && normalizedPlan !== 'starter' ? TRIAL_DAYS : 0;
+    const trialDays = !hasPaidHistory && normalizedPlan === 'professional' ? TRIAL_DAYS : 0;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',

@@ -66,7 +66,7 @@ export default function Landing() {
                   Free forever starter plan
                 </span>
                 <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-700">
-                  14-day free trial on paid plans
+                  14-day free trial on professional
                 </span>
               </div>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -159,7 +159,7 @@ export default function Landing() {
           <div className="rounded-2xl border border-slate-200 bg-white/95 px-5 py-5">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">Business</p>
             <p className="mt-2 text-3xl font-black text-slate-900">$79/mo</p>
-            <p className="mt-1 text-sm text-slate-600">Includes a 14-day free trial with premium controls and support.</p>
+            <p className="mt-1 text-sm text-slate-600">Premium controls and support for scaling teams.</p>
           </div>
         </div>
       </section>

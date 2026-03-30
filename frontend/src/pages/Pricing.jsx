@@ -39,7 +39,7 @@ const fallbackPlans = [
     amount: 7900,
     currency: 'usd',
     interval: 'month',
-    trialDays: 14,
+    trialDays: 0,
     isFree: false,
     cta: 'Upgrade to Business',
     perks: ['Everything in Professional', 'Priority onboarding support', 'Higher-touch billing operations', 'Shared finance workflows', 'Future-ready for team expansion'],
@@ -93,7 +93,7 @@ export default function Pricing() {
               Starter is free forever
             </span>
             <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-700">
-              Paid plans include a 14-day free trial
+              Professional includes a 14-day free trial
             </span>
           </div>
 
