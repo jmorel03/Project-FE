@@ -172,6 +172,21 @@ async function upsertSubscriptionRecord({ stripeCustomerId, stripeSubscription }
       cancelAtPeriodEnd: Boolean(stripeSubscription.cancel_at_period_end),
     },
   });
+
+  // Ensure paid/trialing subscription overrides starter fallback in DB-driven views.
+  if (guessPlanKeyFromPrice(priceId) && ['active', 'trialing'].includes(stripeSubscription.status)) {
+    await prisma.billingSubscription.updateMany({
+      where: {
+        userId,
+        stripeSubscriptionId: { startsWith: 'free_' },
+        status: { in: ['active', 'trialing'] },
+      },
+      data: {
+        status: 'canceled',
+        cancelAtPeriodEnd: false,
+      },
+    });
+  }
 }
 
 async function cancelOtherActiveSubscriptions({ stripe, stripeCustomerId, keepSubscriptionId }) {
@@ -453,7 +468,7 @@ exports.createCheckoutSession = async (req, res, next) => {
             trial_period_days: trialDays,
           }
         : undefined,
-      success_url: `${baseUrl}/settings/subscription?checkout=success`,
+      success_url: `${baseUrl}/settings/subscription?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/settings/subscription?checkout=cancelled`,
       allow_promotion_codes: true,
       metadata: {
@@ -466,6 +481,64 @@ exports.createCheckoutSession = async (req, res, next) => {
     res.json({ url: session.url });
   } catch (err) {
     next(err);
+  }
+};
+
+exports.finalizeCheckoutSession = async (req, res, next) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) {
+      return res.status(503).json({ error: 'Billing is not configured yet' });
+    }
+
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId is required' });
+    }
+
+    const user = await getCurrentUser(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(String(sessionId), {
+      expand: ['subscription', 'customer'],
+    });
+
+    if (session.mode !== 'subscription' || !session.subscription || !session.customer) {
+      return res.status(400).json({ error: 'Invalid checkout session for subscription finalization' });
+    }
+
+    const customer = session.customer;
+    const customerId = typeof customer === 'string' ? customer : customer.id;
+    const customerUserId = typeof customer === 'string' ? null : customer.metadata?.userId;
+
+    if (customerUserId && customerUserId !== user.id) {
+      return res.status(403).json({ error: 'Checkout session does not belong to this account' });
+    }
+
+    const subscriptionId = typeof session.subscription === 'string'
+      ? session.subscription
+      : session.subscription.id;
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['items.data.price'],
+    });
+
+    await upsertSubscriptionRecord({
+      stripeCustomerId: customerId,
+      stripeSubscription: subscription,
+    });
+
+    await cancelOtherActiveSubscriptions({
+      stripe,
+      stripeCustomerId: customerId,
+      keepSubscriptionId: subscription.id,
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    return next(err);
   }
 };
 

@@ -40,10 +40,24 @@ export default function Subscription() {
   // Auto-refetch when Stripe redirects back with ?checkout=success
   useEffect(() => {
     const checkout = searchParams.get('checkout');
+    const sessionId = searchParams.get('session_id');
+
     if (checkout === 'success') {
-      toast.success('Subscription activated! Your plan has been updated.');
-      refetch();
-      navigate('/settings/subscription', { replace: true });
+      const finalize = async () => {
+        try {
+          if (sessionId) {
+            await billingService.finalizeCheckoutSession(sessionId);
+          }
+          toast.success('Subscription activated! Your plan has been updated.');
+        } catch (err) {
+          toast.error(err?.response?.data?.error || 'Subscription synced with Stripe, but local plan update is pending. Refresh in a few seconds.');
+        } finally {
+          refetch();
+          navigate('/settings/subscription', { replace: true });
+        }
+      };
+
+      finalize();
     } else if (checkout === 'cancelled') {
       toast('Checkout cancelled.', { icon: 'ℹ️' });
       navigate('/settings/subscription', { replace: true });

@@ -4,6 +4,7 @@ const {
   getPlans,
   getBillingSummary,
   createCheckoutSession,
+  finalizeCheckoutSession,
   createPortalSession,
   createSetupIntent,
   setDefaultPaymentMethod,
@@ -20,6 +21,7 @@ router.use(authenticate);
 router.get('/plans', getPlans);
 router.get('/summary', getBillingSummary);
 router.post('/checkout-session', createCheckoutSession);
+router.post('/checkout-session/finalize', finalizeCheckoutSession);
 router.post('/portal-session', createPortalSession);
 router.post('/setup-intent', createSetupIntent);
 router.post('/set-default-payment-method', setDefaultPaymentMethod);
