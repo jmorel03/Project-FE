@@ -38,6 +38,15 @@ app.use(helmet({
   hsts: process.env.NODE_ENV === 'production'
     ? { maxAge: 31536000, includeSubDomains: true, preload: true }
     : false,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  permissionsPolicy: {
+    features: {
+      camera: ["'none'"],
+      microphone: ["'none'"],
+      geolocation: ["'none'"],
+      payment: ["'self'"],
+    },
+  },
 }));
 app.use(cors({
   origin(origin, callback) {
@@ -62,6 +71,13 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { error: 'Too many auth attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const adminAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many admin auth attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -175,6 +191,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/support', supportLimiter, supportRoutes);
+app.use('/api/admin/auth', adminAuthLimiter);
 app.use('/api/admin', adminRoutes);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────

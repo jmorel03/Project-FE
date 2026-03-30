@@ -9,6 +9,10 @@ function validateSecurityConfig() {
   const issues = [];
   const jwtSecret = String(process.env.JWT_SECRET || '');
   const refreshSecret = String(process.env.JWT_REFRESH_SECRET || '');
+  const maxFailedAttempts = Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5);
+  const lockMinutes = Number(process.env.LOGIN_LOCK_MINUTES || 15);
+  const adminMaxFailedAttempts = Number(process.env.ADMIN_LOGIN_MAX_FAILED_ATTEMPTS || maxFailedAttempts);
+  const adminLockMinutes = Number(process.env.ADMIN_LOGIN_LOCK_MINUTES || lockMinutes);
 
   if (process.env.NODE_ENV === 'production') {
     if (!process.env.CLIENT_URL) issues.push('CLIENT_URL is required in production');
@@ -18,6 +22,18 @@ function validateSecurityConfig() {
     }
     if (refreshSecret.length < 32 || refreshSecret.includes('change-me')) {
       issues.push('JWT_REFRESH_SECRET must be a strong random value of at least 32 characters');
+    }
+    if (!Number.isFinite(maxFailedAttempts) || maxFailedAttempts < 1 || maxFailedAttempts > 20) {
+      issues.push('LOGIN_MAX_FAILED_ATTEMPTS must be a number between 1 and 20');
+    }
+    if (!Number.isFinite(lockMinutes) || lockMinutes < 1 || lockMinutes > 120) {
+      issues.push('LOGIN_LOCK_MINUTES must be a number between 1 and 120');
+    }
+    if (!Number.isFinite(adminMaxFailedAttempts) || adminMaxFailedAttempts < 1 || adminMaxFailedAttempts > 20) {
+      issues.push('ADMIN_LOGIN_MAX_FAILED_ATTEMPTS must be a number between 1 and 20');
+    }
+    if (!Number.isFinite(adminLockMinutes) || adminLockMinutes < 1 || adminLockMinutes > 120) {
+      issues.push('ADMIN_LOGIN_LOCK_MINUTES must be a number between 1 and 120');
     }
   }
 

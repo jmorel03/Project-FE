@@ -5,6 +5,9 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 
+const LOGIN_MAX_FAILED_ATTEMPTS = Math.max(1, Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5));
+const LOGIN_LOCK_MINUTES = Math.max(1, Number(process.env.LOGIN_LOCK_MINUTES || 15));
+
 function hashRefreshToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
@@ -47,7 +50,7 @@ const signAccess = (userId) =>
   });
 
 const signRefresh = (userId) =>
-  jwt.sign({ sub: userId }, process.env.JWT_REFRESH_SECRET, {
+  jwt.sign({ sub: userId, jti: uuidv4() }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   });
 
@@ -118,13 +121,40 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      return res.status(429).json({ error: 'Too many failed login attempts. Please try again later.' });
+    }
+
     if (user.isSuspended) {
       return res.status(403).json({ error: 'Account suspended' });
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
+      const nextFailedAttempts = (user.failedLoginAttempts || 0) + 1;
+      const shouldLock = nextFailedAttempts >= LOGIN_MAX_FAILED_ATTEMPTS;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: shouldLock ? 0 : nextFailedAttempts,
+          lockUntil: shouldLock
+            ? new Date(Date.now() + LOGIN_LOCK_MINUTES * 60 * 1000)
+            : null,
+        },
+      });
+
+      if (shouldLock) {
+        return res.status(429).json({ error: 'Too many failed login attempts. Please try again later.' });
+      }
+
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (user.failedLoginAttempts || user.lockUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockUntil: null },
+      });
     }
 
     const accessToken = signAccess(user.id);

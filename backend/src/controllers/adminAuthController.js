@@ -3,6 +3,32 @@ const jwt = require('jsonwebtoken');
 const otplib = require('otplib');
 const prisma = require('../lib/prisma');
 
+const ADMIN_LOGIN_MAX_FAILED_ATTEMPTS = Math.max(
+  1,
+  Number(process.env.ADMIN_LOGIN_MAX_FAILED_ATTEMPTS || process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5),
+);
+const ADMIN_LOGIN_LOCK_MINUTES = Math.max(
+  1,
+  Number(process.env.ADMIN_LOGIN_LOCK_MINUTES || process.env.LOGIN_LOCK_MINUTES || 15),
+);
+
+async function recordAdminFailedAttempt(user) {
+  const nextFailedAttempts = (user.failedLoginAttempts || 0) + 1;
+  const shouldLock = nextFailedAttempts >= ADMIN_LOGIN_MAX_FAILED_ATTEMPTS;
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      failedLoginAttempts: shouldLock ? 0 : nextFailedAttempts,
+      lockUntil: shouldLock
+        ? new Date(Date.now() + ADMIN_LOGIN_LOCK_MINUTES * 60 * 1000)
+        : null,
+    },
+  });
+
+  return shouldLock;
+}
+
 function parseCsv(value) {
   return String(value || '')
     .split(',')
@@ -63,10 +89,21 @@ exports.adminLogin = async (req, res, next) => {
 
     const user = await prisma.user.findUnique({ where: { email: canonicalizeEmail(email) } });
     if (!user) return res.status(401).json({ error: 'Invalid admin credentials' });
+
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      return res.status(429).json({ error: 'Too many failed admin login attempts. Please try again later.' });
+    }
+
     if (user.isSuspended) return res.status(403).json({ error: 'Account suspended' });
 
     const validPassword = await bcrypt.compare(String(password || ''), user.password);
-    if (!validPassword) return res.status(401).json({ error: 'Invalid admin credentials' });
+    if (!validPassword) {
+      const locked = await recordAdminFailedAttempt(user);
+      if (locked) {
+        return res.status(429).json({ error: 'Too many failed admin login attempts. Please try again later.' });
+      }
+      return res.status(401).json({ error: 'Invalid admin credentials' });
+    }
 
     if (!isAdminUser(user)) return res.status(403).json({ error: 'Admin access required' });
 
@@ -81,7 +118,20 @@ exports.adminLogin = async (req, res, next) => {
       token: String(totp || '').replace(/\s+/g, ''),
       secret,
     });
-    if (!verification?.valid) return res.status(401).json({ error: 'Invalid TOTP code' });
+    if (!verification?.valid) {
+      const locked = await recordAdminFailedAttempt(user);
+      if (locked) {
+        return res.status(429).json({ error: 'Too many failed admin login attempts. Please try again later.' });
+      }
+      return res.status(401).json({ error: 'Invalid TOTP code' });
+    }
+
+    if (user.failedLoginAttempts || user.lockUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockUntil: null },
+      });
+    }
 
     const accessToken = signAdminAccessToken(user.id);
 

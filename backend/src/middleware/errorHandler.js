@@ -1,6 +1,4 @@
 exports.errorHandler = (err, req, res, next) => {
-  console.error(err);
-
   // Prisma unique constraint
   if (err.code === 'P2002') {
     const fields = Array.isArray(err.meta?.target) ? err.meta.target.join(', ') : null;
@@ -19,6 +17,11 @@ exports.errorHandler = (err, req, res, next) => {
   const message = process.env.NODE_ENV === 'production' && status === 500
     ? 'Internal server error'
     : err.message || 'Internal server error';
+
+  // Only log unexpected server errors — 4xx are client mistakes and may contain sensitive input.
+  if (status >= 500) {
+    console.error('[500]', err.name, err.message, err.stack ? `\n${err.stack}` : '');
+  }
 
   res.status(status).json({ error: message });
 };

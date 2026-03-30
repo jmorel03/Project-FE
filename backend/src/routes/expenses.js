@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { body, param } = require('express-validator');
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
-const { uploadReceipt } = require('../middleware/upload');
+const { uploadReceipt, validateUploadedFile } = require('../middleware/upload');
 const {
   getExpenses, getExpense, createExpense, updateExpense, deleteExpense,
   getCategories, createCategory, deleteCategory,
@@ -48,6 +48,7 @@ router.post('/:id/receipt',
   param('id').isUUID(),
   validate,
   uploadReceipt.single('receipt'),
+  validateUploadedFile,
   uploadExpenseReceipt,
 );
 

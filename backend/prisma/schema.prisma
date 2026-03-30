@@ -27,6 +27,8 @@ model User {
   phone       String?
   currency    String   @default("USD")
   taxNumber   String?
+  failedLoginAttempts Int @default(0)
+  lockUntil   DateTime?
   isSuspended Boolean  @default(false)
   suspendedAt DateTime?
   suspensionReason String?

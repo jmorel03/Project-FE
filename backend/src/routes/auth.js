@@ -11,11 +11,12 @@ const {
   changePassword,
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
+const { requireTrustedOrigin } = require('../middleware/csrfOrigin');
 const { validate } = require('../middleware/validate');
 
 const router = Router();
 
-router.post('/register', [
+router.post('/register', requireTrustedOrigin, [
   body('email').isEmail().normalizeEmail(),
   body('password')
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
@@ -25,12 +26,12 @@ router.post('/register', [
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
 ], validate, register);
 
-router.post('/login', [
+router.post('/login', requireTrustedOrigin, [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty(),
 ], validate, login);
 
-router.post('/refresh', refresh);
+router.post('/refresh', requireTrustedOrigin, refresh);
 router.post('/reset-password', [
   body('token').isString().isLength({ min: 32 }),
   body('newPassword')
@@ -45,7 +46,7 @@ router.post('/change-password', authenticate, [
     .matches(/[A-Z]/).withMessage('Password must include at least one uppercase letter')
     .matches(/[^A-Za-z0-9]/).withMessage('Password must include at least one special character'),
 ], validate, changePassword);
-router.post('/logout', authenticate, logout);
+router.post('/logout', authenticate, requireTrustedOrigin, logout);
 router.get('/me', authenticate, getMe);
 router.put('/me', authenticate, [
   body('email').optional().isEmail().normalizeEmail(),
