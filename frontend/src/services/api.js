@@ -144,4 +144,10 @@ export const billingService = {
 
 export const supportService = {
   sendMessage: (subject, message) => api.post('/support/contact', { subject, message }).then((r) => r.data),
+  sendPublicMessage: ({ name, email, subject, message }) => api.post('/support/contact-public', {
+    name,
+    email,
+    subject,
+    message,
+  }).then((r) => r.data),
 };

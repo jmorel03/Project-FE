@@ -103,12 +103,12 @@ export default function Faq() {
             Reach out to our team for setup guidance, billing questions, or product support.
           </p>
           <div className="mt-7 flex flex-col justify-center gap-4 sm:flex-row">
-            <a
-              href="mailto:support@xpensist.com"
+            <Link
+              to="/contact-support"
               className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:-translate-y-0.5 hover:bg-primary-700"
             >
               Contact Support
-            </a>
+            </Link>
             <Link
               to="/register"
               className="rounded-xl border border-slate-300 bg-white px-8 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-400"

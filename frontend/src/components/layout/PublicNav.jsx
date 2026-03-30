@@ -44,6 +44,14 @@ export default function PublicNav() {
             >
               FAQ
             </NavLink>
+            <NavLink
+              to="/contact-support"
+              className={({ isActive }) =>
+                `text-sm font-medium transition ${isActive ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900'}`
+              }
+            >
+              Contact
+            </NavLink>
             <div className="flex items-center gap-3">
               <Link
                 to="/login"
@@ -100,6 +108,13 @@ export default function PublicNav() {
               onClick={() => setMobileMenuOpen(false)}
             >
               FAQ
+            </Link>
+            <Link
+              to="/contact-support"
+              className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Contact
             </Link>
             <div className="space-y-2 border-t border-slate-200 px-4 pt-3">
               <Link to="/login" className="block rounded-xl px-4 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-100">

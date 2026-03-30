@@ -7,6 +7,40 @@ const prisma = require('../lib/prisma');
 const router = express.Router();
 
 router.post(
+  '/contact-public',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 120 }),
+    body('email').trim().isEmail().withMessage('Valid email is required').isLength({ max: 255 }),
+    body('subject').trim().notEmpty().withMessage('Subject is required').isLength({ max: 200 }),
+    body('message').trim().notEmpty().withMessage('Message is required').isLength({ max: 5000 }),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: errors.array()[0].msg });
+      }
+
+      const { name, email, subject, message } = req.body;
+
+      await sendSupportEmail({
+        fromName: name,
+        fromEmail: email,
+        subject,
+        message,
+      });
+
+      return res.json({ success: true });
+    } catch (err) {
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
+        return res.status(500).json({ error: 'Support email is not configured yet. Please contact support directly.' });
+      }
+      return res.status(500).json({ error: 'Unable to send support message right now. Please try again shortly.' });
+    }
+  }
+);
+
+router.post(
   '/contact',
   authenticate,
   [
