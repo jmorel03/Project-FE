@@ -24,13 +24,13 @@ function formatDate(value) {
 function getSubscriptionLifecycle(sub) {
   if (!sub) return [];
 
-  const trialEnd = formatDate(sub.trialEnd);
-  const periodEnd = formatDate(sub.currentPeriodEnd);
-  const cancelAt = formatDate(sub.cancelAt);
+  const trialEnd = formatDate(sub.trialEnd || sub.trial_end);
+  const periodEnd = formatDate(sub.currentPeriodEnd || sub.current_period_end);
+  const cancelAt = formatDate(sub.cancelAt || sub.cancel_at);
   const lifecycle = [];
 
-  if (sub.status === 'trialing' && trialEnd) {
-    lifecycle.push({ label: 'Trial ends', value: trialEnd });
+  if (sub.status === 'trialing') {
+    lifecycle.push({ label: 'Trial ends', value: trialEnd || 'Date pending from billing provider' });
   }
 
   if (sub.cancelAtPeriodEnd) {
@@ -41,6 +41,10 @@ function getSubscriptionLifecycle(sub) {
 
   if ((sub.status === 'canceled' || sub.status === 'cancelled') && (cancelAt || periodEnd)) {
     lifecycle.push({ label: 'Cancelled on', value: cancelAt || periodEnd });
+  }
+
+  if (lifecycle.length === 0) {
+    lifecycle.push({ label: 'Status', value: String(sub.status || 'unknown').replaceAll('_', ' ') });
   }
 
   return lifecycle;
@@ -125,6 +129,7 @@ export default function Subscription() {
   const plans = plansData?.plans || [];
   const subscriptions = summaryData?.subscriptions || [];
   const persistedSubscriptions = summaryData?.persistedSubscriptions || [];
+  const activePersistedSub = persistedSubscriptions.find((p) => p.status === 'active' || p.status === 'trialing') || null;
   const cards = summaryData?.cards || [];
 
   // Determine current plan key — prefer live Stripe subscription, fallback to DB record.
@@ -194,6 +199,13 @@ export default function Subscription() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-gray-900 capitalize">{activePlanKey} Plan</p>
               <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 uppercase tracking-wide">Active</span>
+            </div>
+            <div className="mt-3 space-y-1">
+              {getSubscriptionLifecycle(activePersistedSub).map((item) => (
+                <p key={`persisted-${item.label}`} className="text-xs text-gray-500">
+                  {item.label}: {item.value}
+                </p>
+              ))}
             </div>
             {activePlanKey === 'starter' && (
               <p className="text-sm text-gray-500 mt-1">Free — upgrade anytime to unlock more features.</p>
