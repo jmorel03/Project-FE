@@ -44,7 +44,7 @@ const faqItems = [
   {
     question: 'How do I get support if I need help?',
     answer:
-      'You can contact support directly from the support section below. If you are an existing customer, you can also use the in-app support form from Settings.',
+      'You can contact support directly from the support section below. If you are an existing customer, use the in-app Support tab in the left sidebar.',
   },
 ];
 

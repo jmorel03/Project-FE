@@ -18,6 +18,7 @@ import Expenses from './pages/Expenses';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
 import Subscription from './pages/Subscription';
+import Support from './pages/Support';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -59,6 +60,8 @@ function AppRoutes() {
         <Route path="/clients" element={<Clients />} />
         <Route path="/settings/subscription" element={<Subscription />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/support" element={<Navigate to="/support" replace />} />
+        <Route path="/support" element={<Support />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

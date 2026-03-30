@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authService, supportService } from '../services/api';
+import { authService } from '../services/api';
 import Input, { Select } from '../components/ui/Input';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -33,15 +34,11 @@ const passwordSchema = z.object({
   confirm: z.string(),
 }).refine((d) => d.password === d.confirm, { message: 'Passwords do not match', path: ['confirm'] });
 
-const supportSchema = z.object({
-  subject: z.string().min(1, 'Required').max(200),
-  message: z.string().min(10, 'Please provide more detail').max(5000),
-});
-
 export default function Settings() {
   useDocumentTitle('Xpensist | Settings');
 
   const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
   const checklistPreferenceKey = useMemo(
     () => (user?.id ? `xpensist:dashboard:hideChecklist:${user.id}` : null),
     [user?.id],
@@ -55,6 +52,13 @@ export default function Settings() {
     }
     setHideChecklist(localStorage.getItem(checklistPreferenceKey) === '1');
   }, [checklistPreferenceKey]);
+
+  useEffect(() => {
+    // Preserve old deep links such as /settings#support after support moved to /support.
+    if (window.location.hash === '#support') {
+      navigate('/support', { replace: true });
+    }
+  }, [navigate]);
 
   function handleChecklistPreferenceChange(checked) {
     setHideChecklist(checked);
@@ -97,13 +101,6 @@ export default function Settings() {
     formState: { errors: pwErr, isSubmitting: pwSubmitting },
   } = useForm({ resolver: zodResolver(passwordSchema) });
 
-  const {
-    register: regSupport,
-    handleSubmit: handleSupport,
-    reset: resetSupport,
-    formState: { errors: supErr, isSubmitting: supSubmitting },
-  } = useForm({ resolver: zodResolver(supportSchema) });
-
   const profileMutation = useMutation({
     mutationFn: authService.updateProfile,
     onSuccess: (data) => { updateUser(data); toast.success('Profile saved'); },
@@ -123,12 +120,6 @@ export default function Settings() {
       window.location.href = '/login';
     },
     onError: (err) => toast.error(err?.response?.data?.error || 'Update failed'),
-  });
-
-  const supportMutation = useMutation({
-    mutationFn: ({ subject, message }) => supportService.sendMessage(subject, message),
-    onSuccess: () => { toast.success('Message sent — we\'ll be in touch soon!'); resetSupport(); },
-    onError: (err) => toast.error(err?.response?.data?.error || 'Failed to send message'),
   });
 
   return (
@@ -203,34 +194,6 @@ export default function Settings() {
             className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
           />
         </label>
-      </div>
-
-      {/* Support */}
-      <div className="card p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">Contact Support</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Have a question or issue? Send us a message and we'll get back to you.</p>
-        </div>
-        <form onSubmit={handleSupport((d) => supportMutation.mutate(d))} className="space-y-4">
-          <Input label="Subject" placeholder="e.g. Issue with invoice" error={supErr.subject?.message} {...regSupport('subject')} />
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Message</label>
-            <textarea
-              rows={5}
-              placeholder="Describe your issue or question in detail…"
-              className={`w-full rounded-lg border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                supErr.message ? 'border-red-400' : 'border-gray-300'
-              }`}
-              {...regSupport('message')}
-            />
-            {supErr.message && <p className="text-xs text-red-500">{supErr.message.message}</p>}
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" disabled={supSubmitting || supportMutation.isPending} className="btn-primary">
-              {supportMutation.isPending ? 'Sending…' : 'Send Message'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

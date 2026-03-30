@@ -6,6 +6,7 @@ import {
   UsersIcon,
   WalletIcon,
   Cog6ToothIcon,
+  LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/clients', icon: UsersIcon, label: 'Clients' },
   { to: '/settings/subscription', icon: WalletIcon, label: 'Subscription' },
   { to: '/settings', icon: Cog6ToothIcon, label: 'Settings' },
+  { to: '/support', icon: LifebuoyIcon, label: 'Support' },
 ];
 
 export default function Sidebar() {
