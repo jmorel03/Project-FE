@@ -134,12 +134,12 @@ export default function ContactSupport() {
           <div className="space-y-4">
             <div className="rounded-[28px] border border-slate-200 bg-white/95 p-7 shadow-sm">
               <h3 className="text-xl font-semibold text-slate-900">Prefer email?</h3>
-              <p className="mt-2 text-sm text-slate-600">You can also contact us directly at support@xpensist.com.</p>
+              <p className="mt-2 text-sm text-slate-600">You can also contact us directly at xpensist@gmail.com.</p>
               <a
-                href="mailto:support@xpensist.com"
+                href="mailto:xpensist@gmail.com"
                 className="mt-5 inline-flex rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
               >
-                Email support@xpensist.com
+                Email xpensist@gmail.com
               </a>
             </div>
 
