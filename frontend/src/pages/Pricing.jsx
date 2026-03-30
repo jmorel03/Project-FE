@@ -155,7 +155,7 @@ export default function Pricing() {
                 </div>
 
                 <Link
-                  to="/register"
+                  to={`/register?plan=${plan.key}`}
                   className={`mt-6 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition ${
                     highlighted ? 'bg-white text-slate-900 hover:-translate-y-0.5 hover:bg-slate-100' : 'bg-primary-600 text-white hover:-translate-y-0.5 hover:bg-primary-700'
                   }`}

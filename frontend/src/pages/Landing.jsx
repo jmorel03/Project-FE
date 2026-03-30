@@ -70,7 +70,7 @@ export default function Landing() {
                 </span>
               </div>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                <Link to="/register" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:-translate-y-0.5 hover:bg-primary-700">
+                <Link to="/register?plan=starter" className="rounded-xl bg-primary-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200 transition hover:-translate-y-0.5 hover:bg-primary-700">
                   Start Free Today
                 </Link>
                 <Link to="/pricing" className="rounded-xl border border-slate-300 bg-white/90 px-8 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-400">
@@ -230,7 +230,7 @@ export default function Landing() {
           <h2 className="text-3xl font-bold sm:text-4xl">Run the admin side of the business like it matters.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-primary-100">Create invoices, track expenses, follow up on payments, and give yourself a dashboard that actually tells you what to do next.</p>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link to="/register" className="rounded-xl bg-white px-8 py-3 text-sm font-semibold text-primary-700 transition hover:-translate-y-0.5 hover:bg-slate-100">
+            <Link to="/register?plan=starter" className="rounded-xl bg-white px-8 py-3 text-sm font-semibold text-primary-700 transition hover:-translate-y-0.5 hover:bg-slate-100">
               Create Free Account
             </Link>
             <Link to="/pricing" className="rounded-xl border border-white/40 px-8 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10">

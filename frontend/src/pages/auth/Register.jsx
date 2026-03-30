@@ -1,11 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
+import { billingService } from '../../services/api';
 
 const schema = z
   .object({
@@ -26,6 +27,9 @@ export default function Register() {
 
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedPlan = (searchParams.get('plan') || 'starter').toLowerCase();
+  const signupPlan = ['starter', 'professional', 'business'].includes(selectedPlan) ? selectedPlan : 'starter';
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
   });
@@ -33,8 +37,24 @@ export default function Register() {
   const onSubmit = async (data) => {
     try {
       await registerUser(data);
-      navigate('/dashboard');
-      toast.success('Welcome to Xpensist!');
+
+      if (signupPlan === 'starter') {
+        navigate('/dashboard');
+        toast.success('Welcome to Xpensist! Your free Starter account is ready.');
+        return;
+      }
+
+      const checkout = await billingService.createCheckoutSession(signupPlan);
+      if (checkout?.url) {
+        toast.success(signupPlan === 'professional'
+          ? 'Account created. Starting your 14-day free trial checkout...'
+          : 'Account created. Redirecting to secure checkout...');
+        window.location.href = checkout.url;
+        return;
+      }
+
+      navigate('/settings/subscription');
+      toast('Account created. Please complete billing to activate this plan.', { icon: 'ℹ️' });
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Registration failed');
     }
@@ -58,7 +78,13 @@ export default function Register() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="text-sm text-gray-500 mt-1">Start invoicing in minutes</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {signupPlan === 'starter'
+              ? 'Start invoicing in minutes on the free Starter plan.'
+              : signupPlan === 'professional'
+                ? 'Create your account and continue to checkout for your 14-day Professional trial.'
+                : 'Create your account and continue to checkout for Business.'}
+          </p>
         </div>
 
         <div className="card p-8 shadow-lg shadow-slate-200/70">
@@ -72,7 +98,13 @@ export default function Register() {
             <Input label="Password" type="password" placeholder="Min. 8 characters" error={errors.password?.message} {...register('password')} />
             <Input label="Confirm password" type="password" placeholder="Re-enter password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />
             <button type="submit" disabled={isSubmitting} className="btn-primary w-full justify-center py-2.5">
-              {isSubmitting ? 'Creating account…' : 'Create account'}
+              {isSubmitting
+                ? 'Creating account…'
+                : signupPlan === 'starter'
+                  ? 'Create free account'
+                  : signupPlan === 'professional'
+                    ? 'Create account and start trial'
+                    : 'Create account and continue to checkout'}
             </button>
           </form>
         </div>
