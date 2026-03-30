@@ -131,18 +131,7 @@ export default function ContactSupport() {
             </form>
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-[28px] border border-slate-200 bg-white/95 p-7 shadow-sm">
-              <h3 className="text-xl font-semibold text-slate-900">Prefer email?</h3>
-              <p className="mt-2 text-sm text-slate-600">You can also contact us directly at xpensist@gmail.com.</p>
-              <a
-                href="mailto:xpensist@gmail.com"
-                className="mt-5 inline-flex rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                Email xpensist@gmail.com
-              </a>
-            </div>
-
+          <div>
             <div className="rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-7 shadow-sm">
               <h3 className="text-xl font-semibold text-slate-900">Need product details first?</h3>
               <p className="mt-2 text-sm text-slate-700">Review common setup and billing questions before contacting support.</p>
