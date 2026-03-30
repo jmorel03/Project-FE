@@ -3,15 +3,17 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-// ─── Request interceptor: attach access token ────────────────────────────────
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
+// Access token: held in memory only (never localStorage)
+export function setAccessToken(token) {
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
+  }
+}
 // ─── Response interceptor: auto-refresh on 401 ───────────────────────────────
 let isRefreshing = false;
 let waitQueue = [];
@@ -45,21 +47,19 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
+        // Cookie is sent automatically via withCredentials
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
-          { refreshToken },
+          {},
+          { withCredentials: true },
         );
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-        api.defaults.headers.Authorization = `Bearer ${data.accessToken}`;
+        setAccessToken(data.accessToken);
         processQueue(null, data.accessToken);
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch (err) {
         processQueue(err, null);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        setAccessToken(null);
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -77,7 +77,8 @@ export default api;
 export const authService = {
   register: (data) => api.post('/auth/register', data).then((r) => r.data),
   login: (data) => api.post('/auth/login', data).then((r) => r.data),
-  logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
+  logout: () => api.post('/auth/logout').then((r) => r.data),
+  silentRefresh: () => api.post('/auth/refresh').then((r) => r.data),
   getMe: () => api.get('/auth/me').then((r) => r.data),
   updateProfile: (data) => api.put('/auth/me', data).then((r) => r.data),
   changePassword: (data) => api.post('/auth/change-password', data).then((r) => r.data),

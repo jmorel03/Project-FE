@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authService } from '../services/api';
+import { authService, setAccessToken } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -8,41 +8,40 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      authService.getMe()
-        .then(setUser)
-        .catch(() => {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    // On mount, attempt a silent token refresh using the httpOnly cookie.
+    // If the cookie is valid the server rotates it and returns a new access token.
+    authService.silentRefresh()
+      .then(({ accessToken }) => {
+        setAccessToken(accessToken);
+        return authService.getMe();
+      })
+      .then(setUser)
+      .catch(() => {
+        // No valid session — that's fine, user will see login page.
+        setAccessToken(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (credentials) => {
     const data = await authService.login(credentials);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
+    setAccessToken(data.accessToken);
     setUser(data.user);
     return data;
   }, []);
 
   const register = useCallback(async (credentials) => {
     const data = await authService.register(credentials);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
+    setAccessToken(data.accessToken);
     setUser(data.user);
     return data;
   }, []);
 
   const logout = useCallback(async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    await authService.logout(refreshToken).catch(() => {});
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    try {
+      await authService.logout();
+    } catch { /* clear client state regardless */ }
+    setAccessToken(null);
     setUser(null);
   }, []);
 

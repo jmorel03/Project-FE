@@ -36,7 +36,7 @@ router.post(
       if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
         return res.status(500).json({ error: 'Support email is not configured yet. Please contact support directly.' });
       }
-      return res.status(500).json({ error: `Email error: ${err.message}` });
+      return res.status(500).json({ error: 'Unable to send your message right now. Please try again shortly.' });
     }
   }
 );
@@ -77,7 +77,7 @@ router.post(
       if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
         return res.status(500).json({ error: 'Support email is not configured yet. Please contact support directly.' });
       }
-      return res.status(500).json({ error: `Email error: ${err.message}` });
+      return res.status(500).json({ error: 'Unable to send your message right now. Please try again shortly.' });
     }
   }
 );

@@ -115,8 +115,9 @@ export default function Settings() {
     onSuccess: () => {
       toast.success('Password updated. Please log in again.');
       resetPw();
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      // Server already cleared the httpOnly refresh cookie on password change.
+      // Clear in-memory access token and redirect to login.
+      import('../services/api').then(({ setAccessToken }) => setAccessToken(null));
       window.location.href = '/login';
     },
     onError: (err) => toast.error(err?.response?.data?.error || 'Update failed'),

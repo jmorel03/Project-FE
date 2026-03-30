@@ -5,6 +5,7 @@ const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
@@ -19,6 +20,7 @@ const adminRoutes = require('./routes/admin');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
+app.disable('x-powered-by');
 
 if (process.env.TRUST_PROXY) {
   const tp = process.env.TRUST_PROXY;
@@ -31,7 +33,12 @@ const allowedOrigins = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL, 'h
   .filter(Boolean)
   .map((origin) => String(origin).trim());
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  hsts: process.env.NODE_ENV === 'production'
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,
+}));
 app.use(cors({
   origin(origin, callback) {
     // Allow server-to-server and local tools that send no Origin.
@@ -39,6 +46,9 @@ app.use(cors({
     return callback(null, allowedOrigins.includes(origin));
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  maxAge: 86400,
 }));
 
 // ─── Rate Limiting ───────────────────────────────────────────────────────────
@@ -55,6 +65,13 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const supportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many support requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 app.use(limiter);
 
 // Stripe webhook must receive raw body for signature verification
@@ -63,6 +80,7 @@ app.use('/api/billing/webhooks', billingWebhookRoutes);
 // ─── Body Parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // ─── Logging ─────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
@@ -112,6 +130,13 @@ function isAdminHostRequest(req) {
 }
 
 app.get('/admin-health', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   res.json({
     ok: true,
     requestHost: resolveRequestHost(req),
@@ -149,7 +174,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
-app.use('/api/support', supportRoutes);
+app.use('/api/support', supportLimiter, supportRoutes);
 app.use('/api/admin', adminRoutes);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────

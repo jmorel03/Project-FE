@@ -5,6 +5,42 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 
+function hashRefreshToken(token) {
+  return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function setRefreshCookie(res, token) {
+  res.cookie('refreshToken', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+}
+
+function clearRefreshCookie(res) {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
+  });
+}
+
+async function findStoredRefreshToken(rawToken) {
+  const tokenHash = hashRefreshToken(rawToken);
+
+  return prisma.refreshToken.findFirst({
+    where: {
+      OR: [
+        { token: tokenHash },
+        { token: String(rawToken || '') },
+      ],
+    },
+  });
+}
+
 const signAccess = (userId) =>
   jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
@@ -62,11 +98,12 @@ exports.register = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
     await prisma.refreshToken.create({
-      data: { token: refreshToken, userId: user.id, expiresAt },
+      data: { token: hashRefreshToken(refreshToken), userId: user.id, expiresAt },
     });
 
     const { password: _pw, ...userWithoutPassword } = user;
-    res.status(201).json({ accessToken, refreshToken, user: userWithoutPassword });
+    setRefreshCookie(res, refreshToken);
+    res.status(201).json({ accessToken, user: userWithoutPassword });
   } catch (err) {
     next(err);
   }
@@ -96,11 +133,12 @@ exports.login = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
     await prisma.refreshToken.create({
-      data: { token: refreshToken, userId: user.id, expiresAt },
+      data: { token: hashRefreshToken(refreshToken), userId: user.id, expiresAt },
     });
 
     const { password: _pw, ...userWithoutPassword } = user;
-    res.json({ accessToken, refreshToken, user: userWithoutPassword });
+    setRefreshCookie(res, refreshToken);
+    res.json({ accessToken, user: userWithoutPassword });
   } catch (err) {
     next(err);
   }
@@ -108,9 +146,9 @@ exports.login = async (req, res, next) => {
 
 exports.refresh = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token is required' });
+      return res.status(401).json({ error: 'Refresh token is required' });
     }
 
     let payload;
@@ -120,7 +158,7 @@ exports.refresh = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
-    const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
+    const stored = await findStoredRefreshToken(refreshToken);
     if (!stored || stored.expiresAt < new Date()) {
       return res.status(401).json({ error: 'Refresh token revoked or expired' });
     }
@@ -140,7 +178,7 @@ exports.refresh = async (req, res, next) => {
     }
 
     // Rotate token
-    await prisma.refreshToken.delete({ where: { token: refreshToken } });
+    await prisma.refreshToken.delete({ where: { id: stored.id } });
 
     const newAccess = signAccess(payload.sub);
     const newRefresh = signRefresh(payload.sub);
@@ -148,10 +186,11 @@ exports.refresh = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
     await prisma.refreshToken.create({
-      data: { token: newRefresh, userId: payload.sub, expiresAt },
+      data: { token: hashRefreshToken(newRefresh), userId: payload.sub, expiresAt },
     });
 
-    res.json({ accessToken: newAccess, refreshToken: newRefresh });
+    setRefreshCookie(res, newRefresh);
+    res.json({ accessToken: newAccess });
   } catch (err) {
     next(err);
   }
@@ -159,10 +198,14 @@ exports.refresh = async (req, res, next) => {
 
 exports.logout = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
     if (refreshToken) {
-      await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+      const stored = await findStoredRefreshToken(refreshToken);
+      if (stored) {
+        await prisma.refreshToken.delete({ where: { id: stored.id } });
+      }
     }
+    clearRefreshCookie(res);
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
     next(err);
@@ -274,6 +317,7 @@ exports.changePassword = async (req, res, next) => {
       prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
     ]);
 
+    clearRefreshCookie(res);
     return res.json({ message: 'Password updated successfully. Please log in again.' });
   } catch (err) {
     return next(err);
