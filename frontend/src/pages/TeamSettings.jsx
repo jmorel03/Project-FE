@@ -15,6 +15,41 @@ function extractError(err, fallback) {
   return err?.response?.data?.error || fallback;
 }
 
+function confirmToast({ message, confirmLabel = 'Confirm' }) {
+  return new Promise((resolve) => {
+    toast.custom((t) => (
+      <div className="max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+        <p className="text-sm text-slate-700">{message}</p>
+        <div className="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => {
+              toast.dismiss(t.id);
+              resolve(false);
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+            onClick={() => {
+              toast.dismiss(t.id);
+              resolve(true);
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: 12000,
+      position: 'top-center',
+    });
+  });
+}
+
 export default function TeamSettings() {
   useDocumentTitle('Xpensist | Team Settings');
 
@@ -118,7 +153,7 @@ export default function TeamSettings() {
     addMemberMutation.mutate({ email: email.trim(), role });
   }
 
-  function handleRemoveMember(member) {
+  async function handleRemoveMember(member) {
     const currentRole = String(member.role || 'worker').toLowerCase();
     const isCurrentActor = member.user.id === actorUserId;
     if (isCurrentActor && currentRole === 'admin') {
@@ -127,13 +162,19 @@ export default function TeamSettings() {
     }
 
     const fullName = `${member.user.firstName || ''} ${member.user.lastName || ''}`.trim() || member.user.email;
-    const confirmed = window.confirm(`Remove ${fullName} from this team? They will lose workspace access immediately.`);
+    const confirmed = await confirmToast({
+      message: `Remove ${fullName} from this team? They will lose workspace access immediately.`,
+      confirmLabel: 'Remove',
+    });
     if (!confirmed) return;
     removeMemberMutation.mutate(member.user.id);
   }
 
-  function handleRevokeInvite(invite) {
-    const confirmed = window.confirm(`Revoke invite for ${invite.email}?`);
+  async function handleRevokeInvite(invite) {
+    const confirmed = await confirmToast({
+      message: `Revoke invite for ${invite.email}?`,
+      confirmLabel: 'Revoke',
+    });
     if (!confirmed) return;
     revokeInviteMutation.mutate(invite.id);
   }
