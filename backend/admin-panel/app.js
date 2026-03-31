@@ -88,19 +88,28 @@ function initials(name) {
   return String(name || '?').trim().split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function setSession({ token, email }) {
-  localStorage.setItem(storageKeys.token, token);
-  localStorage.setItem(storageKeys.email, email);
+  sessionStorage.setItem(storageKeys.token, token);
+  sessionStorage.setItem(storageKeys.email, email);
 }
 
 function clearSession() {
-  Object.values(storageKeys).forEach((k) => localStorage.removeItem(k));
+  Object.values(storageKeys).forEach((k) => sessionStorage.removeItem(k));
 }
 
 function getSession() {
   return {
-    token: localStorage.getItem(storageKeys.token) || '',
-    email: localStorage.getItem(storageKeys.email) || '',
+    token: sessionStorage.getItem(storageKeys.token) || '',
+    email: sessionStorage.getItem(storageKeys.email) || '',
   };
 }
 
@@ -251,16 +260,20 @@ function renderRecentUsers(users) {
     return;
   }
 
-  els.recentUsers.innerHTML = users.slice(0, 6).map((user) => `
+  els.recentUsers.innerHTML = users.slice(0, 6).map((user) => {
+    const safeName = escapeHtml(user.name);
+    const safeEmail = escapeHtml(user.email);
+    return `
     <div class="recent-item">
       <div class="user-avatar">${initials(user.name)}</div>
       <div>
-        <div class="user-cell-name">${user.name}</div>
-        <div class="user-cell-email">${user.email}</div>
+        <div class="user-cell-name">${safeName}</div>
+        <div class="user-cell-email">${safeEmail}</div>
       </div>
       <span class="muted">${formatRelative(user.createdAt)}</span>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 let allUsersData = [];
@@ -284,6 +297,9 @@ function renderUsers(payload) {
     const isActivePlan = sub?.status === 'active' || sub?.status === 'trialing';
     const planKey = isActivePlan ? (sub.planKey || 'starter') : 'starter';
     const periodEnd = isActivePlan && sub.currentPeriodEnd ? formatDate(sub.currentPeriodEnd) : '-';
+    const safeName = escapeHtml(user.name);
+    const safeEmail = escapeHtml(user.email);
+    const safeUserId = escapeHtml(user.id);
 
     return `
       <tr>
@@ -291,8 +307,8 @@ function renderUsers(payload) {
           <div class="user-cell">
             <div class="user-avatar">${initials(user.name)}</div>
             <div>
-              <div class="user-cell-name">${user.name}</div>
-              <div class="user-cell-email">${user.email}</div>
+              <div class="user-cell-name">${safeName}</div>
+              <div class="user-cell-email">${safeEmail}</div>
             </div>
           </div>
         </td>
@@ -303,10 +319,10 @@ function renderUsers(payload) {
         <td>${formatDate(user.createdAt)}</td>
         <td>
           <div class="action-btns">
-            <button class="btn sm" data-action="suspend" data-user-id="${user.id}" data-user-email="${user.email}" data-suspended="${user.isSuspended}">${user.isSuspended ? 'Unsuspend' : 'Suspend'}</button>
-            <button class="btn sm" data-action="reset-password" data-user-id="${user.id}" data-user-email="${user.email}">Reset PW</button>
-            ${isActivePlan && !sub?.cancelAtPeriodEnd ? `<button class="btn sm" data-action="cancel-sub" data-user-id="${user.id}" data-user-email="${user.email}">Cancel Sub</button>` : ''}
-            <button class="btn sm danger" data-action="delete-account" data-user-id="${user.id}" data-user-email="${user.email}">Delete Account</button>
+            <button class="btn sm" data-action="suspend" data-user-id="${safeUserId}" data-user-email="${safeEmail}" data-suspended="${user.isSuspended}">${user.isSuspended ? 'Unsuspend' : 'Suspend'}</button>
+            <button class="btn sm" data-action="reset-password" data-user-id="${safeUserId}" data-user-email="${safeEmail}">Reset PW</button>
+            ${isActivePlan && !sub?.cancelAtPeriodEnd ? `<button class="btn sm" data-action="cancel-sub" data-user-id="${safeUserId}" data-user-email="${safeEmail}">Cancel Sub</button>` : ''}
+            <button class="btn sm danger" data-action="delete-account" data-user-id="${safeUserId}" data-user-email="${safeEmail}">Delete Account</button>
           </div>
         </td>
       </tr>

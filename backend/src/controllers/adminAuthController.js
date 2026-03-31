@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const otplib = require('otplib');
+const { v4: uuidv4 } = require('uuid');
 const prisma = require('../lib/prisma');
 
 const ADMIN_LOGIN_MAX_FAILED_ATTEMPTS = Math.max(
@@ -76,10 +77,19 @@ function isAdminUser(user) {
 }
 
 function signAdminAccessToken(userId) {
+  const adminSecret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
+  const adminAudience = process.env.ADMIN_JWT_AUDIENCE || 'xpensist-admin';
+
   return jwt.sign(
     { sub: userId, admin: true, admin2fa: true, scope: 'admin' },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '8h' },
+    adminSecret,
+    {
+      algorithm: 'HS256',
+      expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || '8h',
+      audience: adminAudience,
+      issuer: 'xpensist-admin',
+      jwtid: uuidv4(),
+    },
   );
 }
 

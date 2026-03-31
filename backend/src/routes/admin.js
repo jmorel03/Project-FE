@@ -3,6 +3,7 @@ const { body, param } = require('express-validator');
 const { authenticate } = require('../middleware/auth');
 const { requireAdmin, requireAdmin2FA } = require('../middleware/admin');
 const { requireAdminIpAllowlist } = require('../middleware/adminIp');
+const { requireTrustedAdminOrigin } = require('../middleware/csrfOrigin');
 const {
 	getOverview,
 	getUsers,
@@ -16,13 +17,13 @@ const { validate } = require('../middleware/validate');
 
 const router = Router();
 
-router.post('/auth/login', requireAdminIpAllowlist, [
+router.post('/auth/login', requireTrustedAdminOrigin, requireAdminIpAllowlist, [
 	body('email').isEmail().normalizeEmail(),
 	body('password').notEmpty(),
-	body('totp').isLength({ min: 6, max: 8 }),
+	body('totp').matches(/^\d{6,8}$/).withMessage('TOTP must be a 6-8 digit code'),
 ], validate, adminLogin);
 
-router.use(requireAdminIpAllowlist, authenticate, requireAdmin2FA, requireAdmin);
+router.use(requireTrustedAdminOrigin, requireAdminIpAllowlist, authenticate, requireAdmin2FA, requireAdmin);
 
 router.get('/overview', getOverview);
 router.get('/users', getUsers);

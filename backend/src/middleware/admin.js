@@ -47,7 +47,18 @@ exports.requireAdmin = async (req, res, next) => {
 };
 
 exports.requireAdmin2FA = (req, res, next) => {
-  if (req.auth?.admin === true && req.auth?.admin2fa === true) {
+  const expectedAudience = process.env.ADMIN_JWT_AUDIENCE || 'xpensist-admin';
+  const audience = req.auth?.aud;
+  const hasAudience = Array.isArray(audience)
+    ? audience.includes(expectedAudience)
+    : audience === expectedAudience;
+
+  if (
+    req.auth?.admin === true
+    && req.auth?.admin2fa === true
+    && req.auth?.scope === 'admin'
+    && hasAudience
+  ) {
     return next();
   }
   return res.status(403).json({ error: 'Admin 2FA session required' });

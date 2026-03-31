@@ -1,6 +1,22 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 
+function verifyAccessToken(token) {
+  const secrets = [process.env.JWT_SECRET, process.env.ADMIN_JWT_SECRET]
+    .map((s) => String(s || '').trim())
+    .filter(Boolean);
+
+  let lastError = null;
+  for (const secret of secrets) {
+    try {
+      return jwt.verify(token, secret, { algorithms: ['HS256'] });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Invalid token');
+}
+
 exports.authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -9,7 +25,7 @@ exports.authenticate = async (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = verifyAccessToken(token);
 
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },

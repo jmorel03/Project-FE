@@ -9,6 +9,8 @@ function validateSecurityConfig() {
   const issues = [];
   const jwtSecret = String(process.env.JWT_SECRET || '');
   const refreshSecret = String(process.env.JWT_REFRESH_SECRET || '');
+  const adminJwtSecret = String(process.env.ADMIN_JWT_SECRET || jwtSecret);
+  const adminJwtAudience = String(process.env.ADMIN_JWT_AUDIENCE || 'xpensist-admin').trim();
   const maxFailedAttempts = Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5);
   const lockMinutes = Number(process.env.LOGIN_LOCK_MINUTES || 15);
   const adminMaxFailedAttempts = Number(process.env.ADMIN_LOGIN_MAX_FAILED_ATTEMPTS || maxFailedAttempts);
@@ -22,6 +24,12 @@ function validateSecurityConfig() {
     }
     if (refreshSecret.length < 32 || refreshSecret.includes('change-me')) {
       issues.push('JWT_REFRESH_SECRET must be a strong random value of at least 32 characters');
+    }
+    if (adminJwtSecret.length < 32 || adminJwtSecret.includes('change-me')) {
+      issues.push('ADMIN_JWT_SECRET (or JWT_SECRET fallback) must be a strong random value of at least 32 characters');
+    }
+    if (!adminJwtAudience) {
+      issues.push('ADMIN_JWT_AUDIENCE must not be empty');
     }
     if (!Number.isFinite(maxFailedAttempts) || maxFailedAttempts < 1 || maxFailedAttempts > 20) {
       issues.push('LOGIN_MAX_FAILED_ATTEMPTS must be a number between 1 and 20');
