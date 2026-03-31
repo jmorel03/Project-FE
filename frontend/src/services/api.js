@@ -145,6 +145,7 @@ export const billingService = {
 
 export const teamService = {
   getTeam: () => api.get('/team').then((r) => r.data),
+  updateWorkspace: (name) => api.patch('/team', { name }).then((r) => r.data),
   addMember: (data) => api.post('/team/members', data).then((r) => r.data),
   createInvite: (data) => api.post('/team/invites', data).then((r) => r.data),
   revokeInvite: (inviteId) => api.delete(`/team/invites/${inviteId}`).then((r) => r.data),

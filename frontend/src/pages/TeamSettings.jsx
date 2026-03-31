@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExclamationTriangleIcon, ShieldCheckIcon, UserGroupIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
@@ -21,6 +21,7 @@ export default function TeamSettings() {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('worker');
+  const [workspaceName, setWorkspaceName] = useState('');
 
   const teamQuery = useQuery({
     queryKey: ['team-settings'],
@@ -28,12 +29,22 @@ export default function TeamSettings() {
   });
 
   const team = teamQuery.data;
+  const currentWorkspaceName = String(team?.workspace?.name || '').trim();
   const workspaceRole = String(team?.workspace?.actorRole || 'admin').toLowerCase();
   const isWorkspaceAdmin = workspaceRole === 'admin';
   const isBusiness = String(team?.plan?.key || '').toLowerCase() === 'business';
   const seats = team?.seats || { used: 1, limit: 1, remaining: 0 };
   const members = team?.members || [];
   const invites = team?.invites || [];
+  const actorUserId = String(team?.workspace?.actorUserId || '');
+  const nextWorkspaceName = String(workspaceName || '').trim();
+  const workspaceNameChanged = Boolean(nextWorkspaceName) && nextWorkspaceName !== currentWorkspaceName;
+
+  useEffect(() => {
+    if (team?.workspace?.name) {
+      setWorkspaceName((prev) => prev || team.workspace.name);
+    }
+  }, [team?.workspace?.name]);
 
   const roleBadgeStyles = useMemo(
     () => ({
@@ -69,6 +80,16 @@ export default function TeamSettings() {
     onError: (err) => toast.error(extractError(err, 'Unable to revoke invite')),
   });
 
+  const updateWorkspaceMutation = useMutation({
+    mutationFn: (name) => teamService.updateWorkspace(name),
+    onSuccess: (data) => {
+      toast.success('Workspace name updated');
+      setWorkspaceName(data?.workspace?.name || workspaceName);
+      refreshTeam();
+    },
+    onError: (err) => toast.error(extractError(err, 'Unable to update workspace name')),
+  });
+
   const updateRoleMutation = useMutation({
     mutationFn: ({ memberUserId, nextRole }) => teamService.updateMemberRole(memberUserId, nextRole),
     onSuccess: () => {
@@ -95,6 +116,19 @@ export default function TeamSettings() {
     }
 
     addMemberMutation.mutate({ email: email.trim(), role });
+  }
+
+  function handleRemoveMember(member) {
+    const fullName = `${member.user.firstName || ''} ${member.user.lastName || ''}`.trim() || member.user.email;
+    const confirmed = window.confirm(`Remove ${fullName} from this team? They will lose workspace access immediately.`);
+    if (!confirmed) return;
+    removeMemberMutation.mutate(member.user.id);
+  }
+
+  function handleRevokeInvite(invite) {
+    const confirmed = window.confirm(`Revoke invite for ${invite.email}?`);
+    if (!confirmed) return;
+    revokeInviteMutation.mutate(invite.id);
   }
 
   if (teamQuery.isLoading) {
@@ -128,6 +162,7 @@ export default function TeamSettings() {
         <div>
           <h1 className="page-title">Team</h1>
           <p className="page-subtitle">Manage workspace seats with Admin and Worker roles.</p>
+          <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">{team?.workspace?.name || 'Team Workspace'}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-right">
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Seats</p>
@@ -148,6 +183,31 @@ export default function TeamSettings() {
           </div>
         </div>
       )}
+
+      <div className="card p-6 space-y-4">
+        <h2 className="text-base font-semibold text-slate-900">Team Name</h2>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <input
+            type="text"
+            className="input"
+            value={workspaceName}
+            onChange={(e) => setWorkspaceName(e.target.value)}
+            disabled={!isWorkspaceAdmin || updateWorkspaceMutation.isPending}
+            maxLength={80}
+            placeholder="Enter team name"
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!isWorkspaceAdmin || updateWorkspaceMutation.isPending || !workspaceNameChanged}
+            onClick={() => updateWorkspaceMutation.mutate(nextWorkspaceName)}
+          >
+            {updateWorkspaceMutation.isPending ? 'Saving...' : 'Save Name'}
+          </button>
+        </div>
+        <p className="text-xs text-slate-500">{nextWorkspaceName.length}/80 characters</p>
+        {!isWorkspaceAdmin && <p className="text-xs text-slate-500">Only Admin users can rename the team.</p>}
+      </div>
 
       <div className="card p-6 space-y-4">
         <div className="flex items-center gap-2">
@@ -181,6 +241,8 @@ export default function TeamSettings() {
               {members.map((member) => {
                 const currentRole = String(member.role || 'worker').toLowerCase();
                 const canChange = isWorkspaceAdmin && isBusiness;
+                const isCurrentActor = member.user.id === actorUserId;
+                const blockSelfDemotion = isCurrentActor && currentRole === 'admin';
 
                 return (
                   <tr key={member.user.id}>
@@ -201,19 +263,26 @@ export default function TeamSettings() {
                             value={currentRole}
                             onChange={(e) => {
                               const nextRole = e.target.value;
+                              if (blockSelfDemotion && nextRole === 'worker') return;
                               if (nextRole === currentRole) return;
                               updateRoleMutation.mutate({ memberUserId: member.user.id, nextRole });
                             }}
                             disabled={updateRoleMutation.isPending || removeMemberMutation.isPending}
                           >
                             {ROLE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              <option
+                                key={opt.value}
+                                value={opt.value}
+                                disabled={blockSelfDemotion && opt.value === 'worker'}
+                              >
+                                {opt.label}
+                              </option>
                             ))}
                           </select>
                           <button
                             type="button"
                             className="btn-danger !px-3 !py-1.5"
-                            onClick={() => removeMemberMutation.mutate(member.user.id)}
+                            onClick={() => handleRemoveMember(member)}
                             disabled={removeMemberMutation.isPending || updateRoleMutation.isPending}
                           >
                             <XMarkIcon className="h-4 w-4" />
@@ -222,6 +291,9 @@ export default function TeamSettings() {
                         </div>
                       ) : (
                         <span className="text-xs text-slate-400">Admin only</span>
+                      )}
+                      {blockSelfDemotion && (
+                        <p className="mt-2 text-xs text-amber-700">You cannot change your own role to worker.</p>
                       )}
                     </td>
                   </tr>
@@ -285,13 +357,13 @@ export default function TeamSettings() {
               <div key={invite.id} className="rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-slate-900">{invite.email}</p>
-                  <p className="text-xs text-slate-500">Role: {invite.role} • Expires: {new Date(invite.expiresAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-slate-500">Role: {invite.role} • Expires: {new Date(invite.expiresAt).toLocaleDateString()} • Pending</p>
                 </div>
                 {isWorkspaceAdmin && isBusiness ? (
                   <button
                     type="button"
                     className="btn-secondary !px-3 !py-1.5"
-                    onClick={() => revokeInviteMutation.mutate(invite.id)}
+                    onClick={() => handleRevokeInvite(invite)}
                     disabled={revokeInviteMutation.isPending}
                   >
                     Revoke

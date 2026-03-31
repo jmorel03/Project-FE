@@ -16,6 +16,33 @@ const {
   acceptInviteForUser,
 } = require('../lib/teamInvites');
 
+function deriveWorkspaceName(owner) {
+  const company = String(owner?.companyName || '').trim();
+  if (company) return company;
+  const personal = [owner?.firstName, owner?.lastName].map((v) => String(v || '').trim()).filter(Boolean).join(' ');
+  return personal ? `${personal} Workspace` : 'Team Workspace';
+}
+
+async function ensureWorkspace(ownerUserId) {
+  const owner = await prisma.user.findUnique({
+    where: { id: ownerUserId },
+    select: { id: true, firstName: true, lastName: true, companyName: true },
+  });
+
+  if (!owner) return null;
+
+  return prisma.teamWorkspace.upsert({
+    where: { ownerUserId },
+    create: {
+      id: ownerUserId,
+      ownerUserId,
+      name: deriveWorkspaceName(owner),
+    },
+    update: {},
+    select: { id: true, ownerUserId: true, name: true, createdAt: true, updatedAt: true },
+  });
+}
+
 function buildClientUrl(req) {
   return String(process.env.CLIENT_URL || req.get('origin') || 'http://localhost:5173').replace(/\/+$/, '');
 }
@@ -109,7 +136,8 @@ exports.getTeam = async (req, res, next) => {
   try {
     const ownerUserId = req.userId;
     const activePlanKey = await getActivePlanKey(ownerUserId);
-    const [members, pendingInvites] = await Promise.all([
+    const [workspace, members, pendingInvites] = await Promise.all([
+      ensureWorkspace(ownerUserId),
       getTeamMembersForOwner(ownerUserId),
       prisma.teamInvite.findMany({
         where: {
@@ -134,6 +162,8 @@ exports.getTeam = async (req, res, next) => {
 
     res.json({
       workspace: {
+        id: workspace?.id || ownerUserId,
+        name: workspace?.name || 'Team Workspace',
         ownerUserId,
         actorUserId: req.actorUserId || req.userId,
         actorRole: req.workspaceRole || 'admin',
@@ -166,6 +196,39 @@ exports.getTeam = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+exports.updateTeamWorkspace = async (req, res, next) => {
+  try {
+    const ownerUserId = req.userId;
+    const name = String(req.body?.name || '').trim();
+
+    if (!name) {
+      return res.status(400).json({ error: 'Workspace name is required' });
+    }
+
+    if (name.length > 80) {
+      return res.status(400).json({ error: 'Workspace name must be 80 characters or less' });
+    }
+
+    const workspace = await ensureWorkspace(ownerUserId);
+    if (!workspace) {
+      return res.status(404).json({ error: 'Workspace owner not found' });
+    }
+
+    const updated = await prisma.teamWorkspace.update({
+      where: { ownerUserId },
+      data: { name },
+      select: { id: true, ownerUserId: true, name: true, updatedAt: true },
+    });
+
+    return res.json({
+      message: 'Workspace updated',
+      workspace: updated,
+    });
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -433,6 +496,7 @@ exports.acceptInvite = async (req, res, next) => {
 exports.updateTeamMemberRole = async (req, res, next) => {
   try {
     const ownerUserId = req.userId;
+    const actorUserId = req.actorUserId || req.userId;
     const memberUserId = String(req.params.memberUserId || '').trim();
     const role = normalizeTeamRole(req.body?.role);
 
@@ -453,6 +517,13 @@ exports.updateTeamMemberRole = async (req, res, next) => {
 
     if (!membership) {
       return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    if (memberUserId === actorUserId && role === 'worker') {
+      return res.status(400).json({
+        error: 'Admins cannot change their own role to worker.',
+        code: 'TEAM_SELF_DEMOTION_NOT_ALLOWED',
+      });
     }
 
     const updated = await prisma.teamMember.update({

@@ -103,6 +103,14 @@ exports.register = async (req, res, next) => {
       },
     });
 
+    await prisma.teamWorkspace.create({
+      data: {
+        id: user.id,
+        ownerUserId: user.id,
+        name: String(companyName || '').trim() || `${firstName} ${lastName}`.trim() || 'Team Workspace',
+      },
+    });
+
     const accessToken = signAccess(user.id);
     const refreshToken = signRefresh(user.id);
 

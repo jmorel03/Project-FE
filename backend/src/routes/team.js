@@ -5,6 +5,7 @@ const { requireWorkspaceAdmin } = require('../middleware/workspace');
 const { validate } = require('../middleware/validate');
 const {
   getTeam,
+  updateTeamWorkspace,
   addTeamMember,
   createInvite,
   revokeInvite,
@@ -23,6 +24,9 @@ router.get('/invites/preview/:token', [
 router.use(authenticate);
 
 router.get('/', getTeam);
+router.patch('/', requireWorkspaceAdmin, [
+  body('name').isString().isLength({ min: 1, max: 80 }),
+], validate, updateTeamWorkspace);
 router.post('/invites/accept', [
   body('token').isString().isLength({ min: 24 }),
 ], validate, acceptInvite);

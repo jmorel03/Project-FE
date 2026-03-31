@@ -7,6 +7,8 @@ const { requireTrustedAdminOrigin } = require('../middleware/csrfOrigin');
 const {
 	getOverview,
 	getUsers,
+	getTeams,
+	getTeamByOwner,
 	suspendUser,
 	resetUserPassword,
 	cancelUserSubscription,
@@ -27,6 +29,8 @@ router.use(requireTrustedAdminOrigin, requireAdminIpAllowlist, authenticate, req
 
 router.get('/overview', getOverview);
 router.get('/users', getUsers);
+router.get('/teams', getTeams);
+router.get('/teams/:ownerUserId', [param('ownerUserId').isUUID()], validate, getTeamByOwner);
 router.post('/users/:id/suspend', [
 	param('id').isUUID(),
 	body('suspended').optional().isBoolean(),

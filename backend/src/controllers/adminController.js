@@ -409,3 +409,186 @@ exports.deleteUserAccount = async (req, res, next) => {
     return next(err);
   }
 };
+
+exports.getTeams = async (req, res, next) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const search = String(req.query.search || '').trim();
+
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { owner: { email: { contains: search, mode: 'insensitive' } } },
+            { owner: { companyName: { contains: search, mode: 'insensitive' } } },
+            { owner: { firstName: { contains: search, mode: 'insensitive' } } },
+            { owner: { lastName: { contains: search, mode: 'insensitive' } } },
+          ],
+        }
+      : {};
+
+    const [total, workspaces] = await Promise.all([
+      prisma.teamWorkspace.count({ where }),
+      prisma.teamWorkspace.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          ownerUserId: true,
+          name: true,
+          updatedAt: true,
+          owner: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+              companyName: true,
+              subscriptions: {
+                where: { status: { in: ['active', 'trialing'] } },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { planKey: true, status: true },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const ownerIds = workspaces.map((w) => w.ownerUserId);
+    const memberCounts = ownerIds.length
+      ? await prisma.teamMember.groupBy({
+          by: ['ownerUserId'],
+          where: { ownerUserId: { in: ownerIds }, isActive: true },
+          _count: { ownerUserId: true },
+        })
+      : [];
+    const memberCountMap = new Map(memberCounts.map((x) => [x.ownerUserId, x._count.ownerUserId]));
+    const pendingInviteCounts = ownerIds.length
+      ? await prisma.teamInvite.groupBy({
+          by: ['ownerUserId'],
+          where: { ownerUserId: { in: ownerIds }, status: 'PENDING', expiresAt: { gt: new Date() } },
+          _count: { ownerUserId: true },
+        })
+      : [];
+    const inviteCountMap = new Map(pendingInviteCounts.map((x) => [x.ownerUserId, x._count.ownerUserId]));
+
+    return res.json({
+      page,
+      limit,
+      total,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+      teams: workspaces.map((workspace) => ({
+        id: workspace.id,
+        ownerUserId: workspace.ownerUserId,
+        name: workspace.name,
+        ownerEmail: workspace.owner.email,
+        ownerName: `${workspace.owner.firstName || ''} ${workspace.owner.lastName || ''}`.trim() || workspace.owner.email,
+        ownerCompanyName: workspace.owner.companyName || null,
+        planKey: workspace.owner.subscriptions[0]?.planKey || 'starter',
+        planStatus: workspace.owner.subscriptions[0]?.status || 'free',
+        seatsUsed: 1 + (memberCountMap.get(workspace.ownerUserId) || 0),
+        pendingInvites: inviteCountMap.get(workspace.ownerUserId) || 0,
+        updatedAt: workspace.updatedAt,
+      })),
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.getTeamByOwner = async (req, res, next) => {
+  try {
+    const ownerUserId = String(req.params.ownerUserId || '');
+
+    const workspace = await prisma.teamWorkspace.findUnique({
+      where: { ownerUserId },
+      select: {
+        id: true,
+        ownerUserId: true,
+        name: true,
+        updatedAt: true,
+        owner: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+            companyName: true,
+            subscriptions: {
+              where: { status: { in: ['active', 'trialing'] } },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: { planKey: true, status: true, currentPeriodEnd: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!workspace) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const [members, invites] = await Promise.all([
+      prisma.teamMember.findMany({
+        where: { ownerUserId, isActive: true },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          role: true,
+          createdAt: true,
+          member: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      }),
+      prisma.teamInvite.findMany({
+        where: { ownerUserId, status: 'PENDING', expiresAt: { gt: new Date() } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          expiresAt: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    return res.json({
+      workspace: {
+        id: workspace.id,
+        ownerUserId: workspace.ownerUserId,
+        name: workspace.name,
+        updatedAt: workspace.updatedAt,
+      },
+      owner: {
+        email: workspace.owner.email,
+        name: `${workspace.owner.firstName || ''} ${workspace.owner.lastName || ''}`.trim() || workspace.owner.email,
+        companyName: workspace.owner.companyName || null,
+      },
+      subscription: workspace.owner.subscriptions[0] || { planKey: 'starter', status: 'free' },
+      members: members.map((m) => ({
+        role: String(m.role || '').toLowerCase(),
+        joinedAt: m.createdAt,
+        user: m.member,
+      })),
+      invites: invites.map((invite) => ({
+        id: invite.id,
+        email: invite.email,
+        role: String(invite.role || '').toLowerCase(),
+        expiresAt: invite.expiresAt,
+        createdAt: invite.createdAt,
+      })),
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
