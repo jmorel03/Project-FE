@@ -5,7 +5,7 @@ import {
   PencilIcon, PaperAirplaneIcon, ArrowDownTrayIcon,
   BanknotesIcon, TrashIcon, ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
-import { invoiceService } from '../services/api';
+import { billingService, invoiceService } from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Input, { Select } from '../components/ui/Input';
@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { isPlanAtLeast, resolveActivePlanKey } from '../lib/billing';
 
 function fmt(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
@@ -37,6 +38,10 @@ export default function InvoiceView() {
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => invoiceService.get(id),
+  });
+  const billingSummaryQuery = useQuery({
+    queryKey: ['billing-summary-invoice-view'],
+    queryFn: billingService.getSummary,
   });
 
   useDocumentTitle(invoice?.invoiceNumber ? `Xpensist | ${invoice.invoiceNumber}` : 'Xpensist | Invoice Details');
@@ -99,6 +104,8 @@ export default function InvoiceView() {
 
   if (!invoice) return <p className="text-gray-500">Invoice not found.</p>;
 
+  const activePlanKey = resolveActivePlanKey(billingSummaryQuery.data);
+  const canUseReminders = isPlanAtLeast(activePlanKey, 'professional');
   const balance = Number(invoice.total) - Number(invoice.amountPaid);
   const daysUntilDue = differenceInCalendarDays(new Date(invoice.dueDate), new Date());
   const reminderType = daysUntilDue > 0 ? 'UPCOMING' : daysUntilDue === 0 ? 'DUE_TODAY' : daysUntilDue <= -14 ? 'FINAL_NOTICE' : 'OVERDUE';
@@ -133,12 +140,12 @@ export default function InvoiceView() {
                 {sendMutation.isPending ? 'Sending…' : 'Send Email'}
               </button>
               <button
-                onClick={() => reminderMutation.mutate(reminderType)}
-                disabled={reminderMutation.isPending}
+                onClick={() => canUseReminders && reminderMutation.mutate(reminderType)}
+                disabled={reminderMutation.isPending || billingSummaryQuery.isLoading || !canUseReminders}
                 className="btn-secondary text-xs py-1.5 px-3"
               >
                 <PaperAirplaneIcon className="w-4 h-4" />
-                {reminderMutation.isPending ? 'Sending…' : reminderLabel}
+                {reminderMutation.isPending ? 'Sending…' : canUseReminders ? reminderLabel : 'Upgrade for Reminders'}
               </button>
               <button onClick={() => setPaymentOpen(true)} className="btn-primary text-xs py-1.5 px-3">
                 <BanknotesIcon className="w-4 h-4" /> Record Payment
@@ -156,6 +163,18 @@ export default function InvoiceView() {
           </button>
         </div>
       </div>
+
+      {!canUseReminders && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+          Automated and manual invoice reminders start on Professional.
+          {' '}
+          <Link to="/settings/subscription" className="font-semibold underline underline-offset-4">
+            Upgrade your plan
+          </Link>
+          {' '}
+          to unlock reminder workflows.
+        </div>
+      )}
 
       {/* Invoice card */}
       <div className="table-shell">

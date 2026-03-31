@@ -23,5 +23,15 @@ exports.errorHandler = (err, req, res, next) => {
     console.error('[500]', err.name, err.message, err.stack ? `\n${err.stack}` : '');
   }
 
-  res.status(status).json({ error: message });
+  const payload = { error: message };
+
+  if (status < 500 && err.code) {
+    payload.code = err.code;
+  }
+
+  if (status < 500 && err.details) {
+    payload.details = err.details;
+  }
+
+  res.status(status).json(payload);
 };

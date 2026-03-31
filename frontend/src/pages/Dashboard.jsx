@@ -17,9 +17,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { format } from 'date-fns';
-import { dashboardService } from '../services/api';
+import { billingService, dashboardService } from '../services/api';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
+import { isPlanAtLeast, resolveActivePlanKey } from '../lib/billing';
 
 function StatCard({ label, value, sub, color = 'primary', icon: Icon }) {
   const tones = {
@@ -86,6 +87,18 @@ function dueTone(daysUntilDue) {
   return 'text-slate-600 bg-slate-50 border-slate-200';
 }
 
+function UpgradePanel({ title, body, cta = 'Upgrade Plan' }) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5">
+      <p className="text-sm font-semibold text-amber-900">{title}</p>
+      <p className="mt-2 text-sm text-amber-800">{body}</p>
+      <Link to="/settings/subscription" className="btn-secondary mt-4 w-fit">
+        {cta}
+      </Link>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   useDocumentTitle('Xpensist | Dashboard');
   const { user } = useAuth();
@@ -138,18 +151,48 @@ export default function Dashboard() {
     }
   }
 
-  const statsQuery = useQuery({ queryKey: ['dashboard-stats'], queryFn: dashboardService.stats });
-  const financeQuery = useQuery({
-    queryKey: ['dashboard-finance', financeRange],
-    queryFn: () => dashboardService.finance({ range: financeRange }),
+  const billingSummaryQuery = useQuery({
+    queryKey: ['billing-summary-dashboard'],
+    queryFn: billingService.getSummary,
   });
-  const revenueQuery = useQuery({ queryKey: ['dashboard-revenue'], queryFn: dashboardService.revenue });
+  const statsQuery = useQuery({ queryKey: ['dashboard-stats'], queryFn: dashboardService.stats });
+  const activePlanKey = resolveActivePlanKey(billingSummaryQuery.data);
+  const hasProfessionalReporting = isPlanAtLeast(activePlanKey, 'professional');
+  const hasBusinessReporting = isPlanAtLeast(activePlanKey, 'business');
+  const availableFinanceRanges = hasBusinessReporting
+    ? ['month', 'quarter', 'year']
+    : hasProfessionalReporting
+      ? ['month', 'quarter']
+      : ['month'];
+
+  useEffect(() => {
+    if (!availableFinanceRanges.includes(financeRange)) {
+      setFinanceRange(availableFinanceRanges[availableFinanceRanges.length - 1]);
+    }
+  }, [availableFinanceRanges, financeRange]);
+
+  useEffect(() => {
+    if (dashboardMode === 'executive' && !hasBusinessReporting) {
+      updateDashboardMode('operator');
+    }
+  }, [dashboardMode, hasBusinessReporting]);
+
+  const financeQuery = useQuery({
+    queryKey: ['dashboard-finance', financeRange, dashboardMode, activePlanKey],
+    queryFn: () => dashboardService.finance({ range: financeRange, mode: dashboardMode }),
+    enabled: !billingSummaryQuery.isLoading,
+  });
+  const revenueQuery = useQuery({
+    queryKey: ['dashboard-revenue', activePlanKey],
+    queryFn: dashboardService.revenue,
+    enabled: hasProfessionalReporting,
+  });
   const activityQuery = useQuery({ queryKey: ['dashboard-activity'], queryFn: dashboardService.activity });
   const insightsQuery = useQuery({ queryKey: ['dashboard-insights'], queryFn: dashboardService.insights });
 
   const stats = statsQuery.data;
   const finance = financeQuery.data;
-  const revenue = revenueQuery.data;
+  const revenue = revenueQuery.data?.data || [];
   const activity = activityQuery.data;
   const insights = insightsQuery.data;
 
@@ -162,6 +205,7 @@ export default function Dashboard() {
   const followUpQueue = insights?.topInvoices || [];
   const focusItems = insights?.focusItems || [];
   const isExecutiveMode = dashboardMode === 'executive';
+  const financeBlocked = financeQuery.isError && financeQuery.error?.response?.status === 403;
 
   const moneyIn = Number(finance?.moneyIn || 0);
   const moneyOut = Number(finance?.moneyOut || 0);
@@ -201,7 +245,8 @@ export default function Dashboard() {
               </button>
               <button
                 type="button"
-                onClick={() => updateDashboardMode('executive')}
+                onClick={() => hasBusinessReporting && updateDashboardMode('executive')}
+                disabled={!hasBusinessReporting}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                   isExecutiveMode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-300 hover:text-white'
                 }`}
@@ -221,6 +266,9 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+        {!hasBusinessReporting && (
+          <p className="mt-4 text-xs text-slate-400">Executive mode is available on Business.</p>
+        )}
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
@@ -398,6 +446,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setFinanceRange('quarter')}
+              disabled={!availableFinanceRanges.includes('quarter')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 financeRange === 'quarter' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
@@ -407,6 +456,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setFinanceRange('year')}
+              disabled={!availableFinanceRanges.includes('year')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 financeRange === 'year' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
@@ -416,6 +466,15 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {financeBlocked ? (
+          <div className="mt-5">
+            <UpgradePanel
+              title="More finance reporting is locked to higher plans"
+              body="Quarterly finance views require Professional. Executive mode and 12-month finance views require Business."
+            />
+          </div>
+        ) : (
+          <>
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Money In</p>
@@ -467,6 +526,8 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       <div className={`grid gap-4 ${isExecutiveMode ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'}`}>
@@ -502,6 +563,13 @@ export default function Dashboard() {
       <div className={`grid grid-cols-1 gap-6 ${isExecutiveMode ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
         <div className="card p-6">
           <h2 className="mb-4 text-base font-semibold text-gray-900">Revenue vs Expenses (6 months)</h2>
+          {!hasProfessionalReporting ? (
+            <UpgradePanel
+              title="Revenue trend reporting starts on Professional"
+              body="Starter keeps month-level finance totals, while Professional unlocks the 6-month revenue versus expense chart."
+            />
+          ) : (
+            <>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={revenue || []} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <defs>
@@ -529,6 +597,8 @@ export default function Dashboard() {
             </AreaChart>
           </ResponsiveContainer>
           {revenueQuery.isLoading && <p className="mt-2 text-xs text-gray-500">Loading trend data...</p>}
+            </>
+          )}
         </div>
 
         {!isExecutiveMode && (

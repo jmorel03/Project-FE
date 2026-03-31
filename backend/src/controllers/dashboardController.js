@@ -1,5 +1,11 @@
 const prisma = require('../lib/prisma');
 const {
+  getPlanCapabilities,
+  normalizePlanKey,
+  requireFinanceAccess,
+  requirePlan,
+} = require('../lib/planLimits');
+const {
   startOfMonth,
   endOfMonth,
   subMonths,
@@ -183,6 +189,9 @@ exports.getStats = async (req, res, next) => {
 exports.getRevenueChart = async (req, res, next) => {
   try {
     const userId = req.userId;
+    const access = await requirePlan(userId, 'professional', 'Revenue trend reporting', {
+      code: 'REPORTING_UPGRADE_REQUIRED',
+    });
     const months = 6;
 
     const data = await Promise.all(
@@ -207,7 +216,13 @@ exports.getRevenueChart = async (req, res, next) => {
       }),
     );
 
-    res.json(data);
+    res.json({
+      plan: {
+        key: access.currentPlanKey,
+        capabilities: access.capabilities,
+      },
+      data,
+    });
   } catch (err) {
     next(err);
   }
@@ -359,6 +374,8 @@ exports.getInsights = async (req, res, next) => {
     const revenueTrend = lastMonthRevenue > 0
       ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
       : null;
+    const activePlanKey = normalizePlanKey(activePlan?.planKey);
+    const capabilities = getPlanCapabilities(activePlanKey);
 
     const checklist = [
       {
@@ -428,6 +445,10 @@ exports.getInsights = async (req, res, next) => {
     }
 
     res.json({
+      plan: {
+        key: activePlanKey,
+        capabilities,
+      },
       checklist,
       summary: {
         pendingCollections: outstandingWithBalance.reduce((sum, invoice) => sum + invoice.balance, 0),
@@ -459,6 +480,10 @@ exports.getFinanceSummary = async (req, res, next) => {
   try {
     const userId = req.userId;
     const now = new Date();
+    const access = await requireFinanceAccess(userId, {
+      range: req.query.range,
+      mode: req.query.mode,
+    });
     const {
       range,
       currentStart,
@@ -467,7 +492,7 @@ exports.getFinanceSummary = async (req, res, next) => {
       previousEnd,
       comparisonLabel,
       trendLabel,
-    } = resolveFinanceRange(String(req.query.range || 'month').toLowerCase(), now);
+    } = resolveFinanceRange(access.range, now);
 
     const [
       currentPaid,
@@ -535,6 +560,11 @@ exports.getFinanceSummary = async (req, res, next) => {
     const previousNetProfit = previousMoneyIn - previousMoneyOut;
 
     res.json({
+      plan: {
+        key: access.currentPlanKey,
+        capabilities: access.capabilities,
+      },
+      viewMode: access.mode,
       range,
       comparisonLabel,
       trendLabel,

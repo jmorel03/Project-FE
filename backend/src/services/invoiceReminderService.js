@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const { differenceInCalendarDays, endOfDay, startOfDay } = require('date-fns');
 const { sendInvoiceReminderEmail } = require('./emailService');
+const { requirePlan } = require('../lib/planLimits');
 
 function getBalanceDue(invoice) {
   return Math.max(Number(invoice.total) - Number(invoice.amountPaid || 0), 0);
@@ -34,6 +35,8 @@ async function sendReminderForInvoice({ invoice, user, type, force = false, now 
   if (!invoice?.client?.email) {
     throw new Error('Client has no email address');
   }
+
+  await requirePlan(user.id, 'professional', 'Invoice reminders', { code: 'REMINDER_UPGRADE_REQUIRED' });
 
   if (['PAID', 'CANCELLED', 'DRAFT'].includes(invoice.status)) {
     throw new Error('Only sent or partially paid invoices can receive reminders');
