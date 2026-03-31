@@ -137,6 +137,22 @@ Before pushing to production, ensure:
 - [ ] **SSL/TLS** — Cloudflare SSL/TLS set to **Full (strict)**
 - [ ] **Database Backups** — Automated backups configured
 - [ ] **CDN Cache** — Cloudflare caching rules set for static assets
+
+## Launch Operations
+
+- Runbook: `OPERATIONS_RUNBOOK.md`
+- One-command readiness check:
+
+```bash
+./deploy-check.sh
+```
+
+Optional: skip UI e2e locally
+
+```bash
+SKIP_E2E=1 ./deploy-check.sh
+```
+
 ---
 
 ## Option 1 (Implemented): Postgres + Cloudflare R2

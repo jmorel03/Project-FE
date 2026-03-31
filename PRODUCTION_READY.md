@@ -149,6 +149,7 @@ Your website is **production-ready for push to git**.
 ### Key Files:
 - 📖 **DEPLOYMENT.md** — Complete deployment guide
 - 📕 **OPERATIONS_RUNBOOK.md** — Incident handling, thresholds, and rollback procedures
+- ✅ **PRODUCTION_ENV_CHECKLIST.md** — 10-minute pass/fail launch gate checklist
 - ✅ **deploy-check.sh** — Pre-deployment validation script
 - 🎯 **README.md** — Updated with production checklist
 - 🌐 **frontend/public/robots.txt** — SEO bot configuration
