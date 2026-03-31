@@ -19,8 +19,12 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteToken = String(searchParams.get('invite') || '').trim();
+  const invitedEmail = String(searchParams.get('email') || '').trim().toLowerCase();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
+    defaultValues: {
+      email: invitedEmail || '',
+    },
   });
 
   const onSubmit = async (data) => {
@@ -55,7 +59,7 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-gray-900">Xpensist</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
           {inviteToken && (
-            <p className="text-xs text-primary-700 mt-2">Sign in with your invited email to accept this team invite.</p>
+            <p className="text-xs text-primary-700 mt-2">Sign in with your invited email to accept this team invite{invitedEmail ? `: ${invitedEmail}` : ''}.</p>
           )}
         </div>
 

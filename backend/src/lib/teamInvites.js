@@ -58,7 +58,14 @@ async function acceptInviteForUser({ token, userId, userEmail }) {
   }
 
   if (normalizeInviteEmail(invite.email) !== normalizedEmail) {
-    throw buildInviteAcceptError('Invite email does not match this account.', 'TEAM_INVITE_EMAIL_MISMATCH');
+    throw buildInviteAcceptError(
+      `This invite is for ${invite.email}. Please sign in or register with that email.`,
+      'TEAM_INVITE_EMAIL_MISMATCH',
+      {
+        invitedEmail: invite.email,
+        accountEmail: normalizedEmail,
+      },
+    );
   }
 
   if (invite.ownerUserId === userId) {

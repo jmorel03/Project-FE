@@ -30,9 +30,13 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const selectedPlan = (searchParams.get('plan') || 'starter').toLowerCase();
   const inviteToken = String(searchParams.get('invite') || '').trim();
+  const invitedEmail = String(searchParams.get('email') || '').trim().toLowerCase();
   const signupPlan = ['starter', 'professional', 'business'].includes(selectedPlan) ? selectedPlan : 'starter';
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
+    defaultValues: {
+      email: invitedEmail || '',
+    },
   });
 
   const onSubmit = async (data) => {
@@ -104,6 +108,9 @@ export default function Register() {
             </div>
             <Input label="Company name" placeholder="company inc. (optional)" error={errors.companyName?.message} {...register('companyName')} />
             <Input label="Email address" type="email" placeholder="you@company.com" error={errors.email?.message} {...register('email')} />
+            {inviteToken && invitedEmail && (
+              <p className="text-xs text-slate-500">This invite is tied to {invitedEmail}. Use this address to join the workspace.</p>
+            )}
             <Input label="Password" type="password" placeholder="Min. 8 characters" error={errors.password?.message} {...register('password')} />
             <Input label="Confirm password" type="password" placeholder="Re-enter password" error={errors.confirmPassword?.message} {...register('confirmPassword')} />
             <button type="submit" disabled={isSubmitting} className="btn-primary w-full justify-center py-2.5">
