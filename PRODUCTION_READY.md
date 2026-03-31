@@ -20,7 +20,8 @@ Status: **GO for controlled paid beta**, **NO-GO for broad public launch today**
 - [x] Prisma client generation in CI fixed (prevents runner failures)
 - [ ] Production monitoring/alerting verified in live environment (not evidenced in repo)
 - [ ] Backup + restore drill completed and timed (not evidenced in repo)
-- [ ] Incident response runbook with pager ownership verified (not evidenced in repo)
+- [x] Incident response runbook created (`OPERATIONS_RUNBOOK.md`)
+- [ ] Pager ownership verified in production contact roster
 - [ ] Billing failure and webhook failure operational playbook verified (not evidenced in repo)
 
 ### What This Means
@@ -147,6 +148,7 @@ Your website is **production-ready for push to git**.
 
 ### Key Files:
 - 📖 **DEPLOYMENT.md** — Complete deployment guide
+- 📕 **OPERATIONS_RUNBOOK.md** — Incident handling, thresholds, and rollback procedures
 - ✅ **deploy-check.sh** — Pre-deployment validation script
 - 🎯 **README.md** — Updated with production checklist
 - 🌐 **frontend/public/robots.txt** — SEO bot configuration

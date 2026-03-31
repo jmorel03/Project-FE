@@ -247,4 +247,8 @@ npm update    # Update safe versions
 
 ## Support
 
-For issues or questions, check the main README.md or contact support@xpensist.com
+For issues or questions:
+
+1. Follow `OPERATIONS_RUNBOOK.md` for incident handling and rollback procedures
+2. Check `README.md` for project setup references
+3. Contact support@xpensist.com
