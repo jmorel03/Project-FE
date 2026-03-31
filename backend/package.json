@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "postinstall": "prisma generate",
     "test": "node --test",
     "test:auth-smoke": "node --test tests/auth.smoke.test.js",
     "test:security": "node --test tests/security.middleware.test.js",
