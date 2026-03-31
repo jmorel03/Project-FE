@@ -73,6 +73,9 @@ body { font-family: "Segoe UI", Roboto, sans-serif; background: var(--bg); color
 table { width: 100%; border-collapse: collapse; min-width: 760px; }
 th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; }
 th { background: #f8fafc; font-size: 0.76rem; text-transform: uppercase; color: var(--muted); }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: #f8fafc; }
+.clickable-row:focus td { outline: 2px solid #0ea5e9; outline-offset: -2px; }
 .table-footer { display: flex; justify-content: space-between; padding: 10px 12px; }
 .user-cell { display: flex; gap: 8px; align-items: center; }
 .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #0891b2); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }

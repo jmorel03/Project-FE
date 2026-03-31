@@ -366,7 +366,7 @@ function renderTeams(payload) {
     const safeOwnerUserId = escapeHtml(team.ownerUserId);
 
     return `
-      <tr>
+      <tr class="clickable-row" data-action="view-team" data-owner-user-id="${safeOwnerUserId}" tabindex="0" role="button" aria-label="View ${safeTeamName}">
         <td><strong>${safeTeamName}</strong></td>
         <td>
           <div>
@@ -406,6 +406,16 @@ function renderTeamsPagination() {
   }
   html += `<button class="page-btn" data-team-page="${teamsPage + 1}" ${teamsPage >= teamsTotalPages ? 'disabled' : ''}>></button>`;
   els.teamsPagination.innerHTML = html;
+}
+
+function handleTeamsRowKeydown(event) {
+  const row = event.target.closest('tr[data-action="view-team"]');
+  if (!row) return;
+
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    row.click();
+  }
 }
 
 function renderPagination() {
@@ -790,6 +800,7 @@ els.teamsPagination.addEventListener('click', (e) => {
 
 els.usersBody.addEventListener('click', handleUserAction);
 els.teamsBody.addEventListener('click', handleUserAction);
+els.teamsBody.addEventListener('keydown', handleTeamsRowKeydown);
 
 els.modalConfirmBtn.addEventListener('click', () => closeModal({
   confirmed: true,
