@@ -560,7 +560,15 @@ exports.updateTeamMemberRole = async (req, res, next) => {
 exports.removeTeamMember = async (req, res, next) => {
   try {
     const ownerUserId = req.userId;
+    const actorUserId = req.actorUserId || req.userId;
     const memberUserId = String(req.params.memberUserId || '').trim();
+
+    if (memberUserId === actorUserId) {
+      return res.status(400).json({
+        error: 'Admins cannot remove themselves from the team.',
+        code: 'TEAM_SELF_REMOVAL_NOT_ALLOWED',
+      });
+    }
 
     const membership = await prisma.teamMember.findFirst({
       where: {

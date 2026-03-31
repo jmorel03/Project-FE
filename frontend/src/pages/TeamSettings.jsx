@@ -119,6 +119,13 @@ export default function TeamSettings() {
   }
 
   function handleRemoveMember(member) {
+    const currentRole = String(member.role || 'worker').toLowerCase();
+    const isCurrentActor = member.user.id === actorUserId;
+    if (isCurrentActor && currentRole === 'admin') {
+      toast.error('Admins cannot remove themselves from the team.');
+      return;
+    }
+
     const fullName = `${member.user.firstName || ''} ${member.user.lastName || ''}`.trim() || member.user.email;
     const confirmed = window.confirm(`Remove ${fullName} from this team? They will lose workspace access immediately.`);
     if (!confirmed) return;
@@ -243,6 +250,7 @@ export default function TeamSettings() {
                 const canChange = isWorkspaceAdmin && isBusiness;
                 const isCurrentActor = member.user.id === actorUserId;
                 const blockSelfDemotion = isCurrentActor && currentRole === 'admin';
+                const blockSelfRemoval = isCurrentActor && currentRole === 'admin';
 
                 return (
                   <tr key={member.user.id}>
@@ -283,7 +291,7 @@ export default function TeamSettings() {
                             type="button"
                             className="btn-danger !px-3 !py-1.5"
                             onClick={() => handleRemoveMember(member)}
-                            disabled={removeMemberMutation.isPending || updateRoleMutation.isPending}
+                            disabled={removeMemberMutation.isPending || updateRoleMutation.isPending || blockSelfRemoval}
                           >
                             <XMarkIcon className="h-4 w-4" />
                             Remove
