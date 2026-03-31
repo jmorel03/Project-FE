@@ -39,6 +39,7 @@
       <nav class="sidebar-nav">
         <button class="nav-item active" data-tab="overview">Overview</button>
         <button class="nav-item" data-tab="users">Users <span id="usersBadge" class="nav-badge"></span></button>
+        <button class="nav-item" data-tab="teams">Teams <span id="teamsBadge" class="nav-badge"></span></button>
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user">
@@ -57,7 +58,7 @@
         </div>
         <div class="topbar-right">
           <div id="connectionStatus" class="conn-status connected"><span class="conn-dot"></span> Connected</div>
-          <button id="refreshBtn" class="btn-icon" title="Refresh data">?</button>
+          <button id="refreshBtn" class="btn-icon" title="Refresh data" aria-label="Refresh data">&#8635;</button>
         </div>
       </header>
 
@@ -125,6 +126,45 @@
             </div>
           </div>
         </section>
+
+        <section id="teamsView" class="view hidden">
+          <div class="card" style="padding:10px 12px;margin-bottom:12px;">
+            <p class="muted">Browse all workspaces, inspect team members and pending invites, and jump directly to owner records.</p>
+          </div>
+          <div class="filter-bar card">
+            <div class="filter-row">
+              <div class="search-wrap">
+                <input id="teamSearchInput" type="text" placeholder="Search team name, owner email, company..." />
+              </div>
+              <div class="filter-controls">
+                <button id="teamSearchBtn" class="btn primary">Search</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Team Name</th>
+                    <th>Owner</th>
+                    <th>Plan</th>
+                    <th>Seats Used</th>
+                    <th>Pending Invites</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="teamsBody"></tbody>
+              </table>
+            </div>
+            <div class="table-footer">
+              <span id="teamsMeta" class="muted"></span>
+              <div class="pagination" id="teamsPagination"></div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -155,7 +195,7 @@
         <label>
           Output
           <div class="output-wrap">
-            <input id="modalOutput" type="text" readonly />
+            <textarea id="modalOutput" rows="10" readonly></textarea>
             <button id="copyOutputBtn" class="btn" type="button">Copy</button>
           </div>
         </label>

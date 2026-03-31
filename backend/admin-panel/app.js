@@ -13,6 +13,11 @@ let state = {
   statusFilter: '',
   totalPages: 1,
   totalUsers: 0,
+  teamsPage: 1,
+  teamsLimit: 20,
+  teamsSearch: '',
+  teamsTotalPages: 1,
+  totalTeams: 0,
   refreshTimer: null,
 };
 
@@ -41,12 +46,19 @@ const els = {
   statusFilter: document.getElementById('statusFilter'),
   pagination: document.getElementById('pagination'),
   usersBadge: document.getElementById('usersBadge'),
+  teamsBadge: document.getElementById('teamsBadge'),
   pageTitle: document.getElementById('pageTitle'),
   lastUpdated: document.getElementById('lastUpdated'),
   refreshBtn: document.getElementById('refreshBtn'),
   connStatus: document.getElementById('connectionStatus'),
   overviewView: document.getElementById('overviewView'),
   usersView: document.getElementById('usersView'),
+  teamsView: document.getElementById('teamsView'),
+  teamsBody: document.getElementById('teamsBody'),
+  teamsMeta: document.getElementById('teamsMeta'),
+  teamsPagination: document.getElementById('teamsPagination'),
+  teamSearchInput: document.getElementById('teamSearchInput'),
+  teamSearchBtn: document.getElementById('teamSearchBtn'),
   toastContainer: document.getElementById('toastContainer'),
   actionModal: document.getElementById('actionModal'),
   modalTitle: document.getElementById('modalTitle'),
@@ -277,6 +289,7 @@ function renderRecentUsers(users) {
 }
 
 let allUsersData = [];
+let allTeamsData = [];
 
 function renderUsers(payload) {
   allUsersData = payload.users || [];
@@ -332,6 +345,69 @@ function renderUsers(payload) {
   renderPagination();
 }
 
+function renderTeams(payload) {
+  allTeamsData = payload.teams || [];
+  state.totalTeams = payload.total || 0;
+  state.teamsTotalPages = payload.totalPages || 1;
+
+  els.teamsBadge.textContent = String(payload.total || '');
+  els.teamsMeta.textContent = `Showing ${allTeamsData.length} of ${payload.total || 0} teams`;
+
+  if (allTeamsData.length === 0) {
+    els.teamsBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748b;">No teams found</td></tr>';
+    renderTeamsPagination();
+    return;
+  }
+
+  els.teamsBody.innerHTML = allTeamsData.map((team) => {
+    const safeTeamName = escapeHtml(team.name || 'Team Workspace');
+    const safeOwnerName = escapeHtml(team.ownerName || team.ownerEmail || '-');
+    const safeOwnerEmail = escapeHtml(team.ownerEmail || '-');
+    const safeOwnerUserId = escapeHtml(team.ownerUserId);
+
+    return `
+      <tr>
+        <td><strong>${safeTeamName}</strong></td>
+        <td>
+          <div>
+            <div class="user-cell-name">${safeOwnerName}</div>
+            <div class="user-cell-email">${safeOwnerEmail}</div>
+          </div>
+        </td>
+        <td>${planBadge(team.planKey, false)}</td>
+        <td>${team.seatsUsed}</td>
+        <td>${team.pendingInvites}</td>
+        <td>${formatDate(team.updatedAt)}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn sm" data-action="view-team" data-owner-user-id="${safeOwnerUserId}">View Team</button>
+            <button class="btn sm" data-action="view-owner" data-owner-user-id="${safeOwnerUserId}">View Owner</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  renderTeamsPagination();
+}
+
+function renderTeamsPagination() {
+  const { teamsPage, teamsTotalPages } = state;
+  if (teamsTotalPages <= 1) {
+    els.teamsPagination.innerHTML = '';
+    return;
+  }
+
+  let html = `<button class="page-btn" data-team-page="${teamsPage - 1}" ${teamsPage <= 1 ? 'disabled' : ''}><</button>`;
+  for (let i = 1; i <= teamsTotalPages; i++) {
+    if (i === 1 || i === teamsTotalPages || Math.abs(i - teamsPage) <= 2) {
+      html += `<button class="page-btn ${i === teamsPage ? 'active' : ''}" data-team-page="${i}">${i}</button>`;
+    }
+  }
+  html += `<button class="page-btn" data-team-page="${teamsPage + 1}" ${teamsPage >= teamsTotalPages ? 'disabled' : ''}>></button>`;
+  els.teamsPagination.innerHTML = html;
+}
+
 function renderPagination() {
   const { page, totalPages } = state;
   if (totalPages <= 1) {
@@ -367,11 +443,20 @@ async function loadUsers() {
   return data;
 }
 
+async function loadTeams() {
+  const params = new URLSearchParams({ page: state.teamsPage, limit: state.teamsLimit });
+  if (state.teamsSearch) params.set('search', state.teamsSearch);
+
+  const data = await apiFetch(`/admin/teams?${params.toString()}`);
+  renderTeams(data);
+  return data;
+}
+
 async function loadDashboard() {
-  const [overview, users] = await Promise.all([loadOverview(), loadUsers()]);
+  const [overview, users, teams] = await Promise.all([loadOverview(), loadUsers(), loadTeams()]);
   els.lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
   setConnected(true);
-  return { overview, users };
+  return { overview, users, teams };
 }
 
 function switchTab(tab) {
@@ -379,7 +464,10 @@ function switchTab(tab) {
   document.querySelector(`.nav-item[data-tab="${tab}"]`)?.classList.add('active');
   els.overviewView.classList.toggle('hidden', tab !== 'overview');
   els.usersView.classList.toggle('hidden', tab !== 'users');
-  els.pageTitle.textContent = tab === 'overview' ? 'Overview' : 'Users';
+  els.teamsView.classList.toggle('hidden', tab !== 'teams');
+  if (tab === 'overview') els.pageTitle.textContent = 'Overview';
+  if (tab === 'users') els.pageTitle.textContent = 'Users';
+  if (tab === 'teams') els.pageTitle.textContent = 'Teams';
 }
 
 function exportCSV() {
@@ -420,10 +508,47 @@ async function handleUserAction(event) {
   const target = event.target.closest('[data-action]');
   if (!target) return;
 
-  const { action, userId, userEmail } = target.dataset;
+  const { action, userId, userEmail, ownerUserId } = target.dataset;
   const isSuspended = target.dataset.suspended === 'true';
 
   try {
+    if (action === 'view-team') {
+      const detail = await apiFetch(`/admin/teams/${ownerUserId}`);
+      const summary = [
+        `Team: ${detail.workspace?.name || '-'}`,
+        `Owner: ${detail.owner?.name || '-'} (${detail.owner?.email || '-'})`,
+        `Plan: ${detail.subscription?.planKey || 'starter'} (${detail.subscription?.status || 'free'})`,
+        `Members: ${detail.members?.length || 0}`,
+        `Pending Invites: ${detail.invites?.length || 0}`,
+        '',
+        'Members:',
+        ...(detail.members?.map((m) => `- ${m.user?.email || 'unknown'} (${m.role})`) || ['- none']),
+        '',
+        'Invites:',
+        ...(detail.invites?.map((i) => `- ${i.email} (${i.role}) exp ${formatDate(i.expiresAt)}`) || ['- none']),
+      ].join('\n');
+
+      await openModal({
+        title: 'Team Details',
+        message: 'Admin read-only access for this team workspace.',
+        showOutput: true,
+        outputValue: summary,
+        hideCancel: true,
+        confirmLabel: 'Close',
+      });
+      return;
+    }
+
+    if (action === 'view-owner') {
+      const detail = await apiFetch(`/admin/teams/${ownerUserId}`);
+      state.page = 1;
+      state.search = detail.owner?.email || '';
+      els.searchInput.value = state.search;
+      switchTab('users');
+      await loadUsers();
+      return;
+    }
+
     if (action === 'suspend') {
       const shouldSuspend = !isSuspended;
       const result = await openModal({
@@ -615,8 +740,18 @@ els.searchBtn.addEventListener('click', () => {
   loadUsers();
 });
 
+els.teamSearchBtn.addEventListener('click', () => {
+  state.teamsPage = 1;
+  state.teamsSearch = els.teamSearchInput.value.trim();
+  loadTeams();
+});
+
 els.searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') els.searchBtn.click();
+});
+
+els.teamSearchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') els.teamSearchBtn.click();
 });
 
 els.planFilter.addEventListener('change', () => {
@@ -643,7 +778,18 @@ els.pagination.addEventListener('click', (e) => {
   }
 });
 
+els.teamsPagination.addEventListener('click', (e) => {
+  const btn = e.target.closest('.page-btn');
+  if (!btn || btn.disabled) return;
+  const p = parseInt(btn.dataset.teamPage, 10);
+  if (!Number.isNaN(p) && p >= 1 && p <= state.teamsTotalPages) {
+    state.teamsPage = p;
+    loadTeams();
+  }
+});
+
 els.usersBody.addEventListener('click', handleUserAction);
+els.teamsBody.addEventListener('click', handleUserAction);
 
 els.modalConfirmBtn.addEventListener('click', () => closeModal({
   confirmed: true,
