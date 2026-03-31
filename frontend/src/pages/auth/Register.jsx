@@ -29,6 +29,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedPlan = (searchParams.get('plan') || 'starter').toLowerCase();
+  const inviteToken = String(searchParams.get('invite') || '').trim();
   const signupPlan = ['starter', 'professional', 'business'].includes(selectedPlan) ? selectedPlan : 'starter';
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
@@ -36,7 +37,13 @@ export default function Register() {
 
   const onSubmit = async (data) => {
     try {
-      await registerUser(data);
+      await registerUser({ ...data, inviteToken: inviteToken || undefined });
+
+      if (inviteToken) {
+        navigate('/dashboard');
+        toast.success('Welcome to the workspace. Your invite has been accepted.');
+        return;
+      }
 
       if (signupPlan === 'starter') {
         navigate('/dashboard');
@@ -79,7 +86,9 @@ export default function Register() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {signupPlan === 'starter'
+            {inviteToken
+              ? 'Create your account to accept this team invitation.'
+              : signupPlan === 'starter'
               ? 'Start invoicing in minutes on the free Starter plan.'
               : signupPlan === 'professional'
                 ? 'Create your account and continue to checkout for your 14-day Professional trial.'

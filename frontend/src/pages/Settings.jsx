@@ -196,6 +196,16 @@ export default function Settings() {
           />
         </label>
       </div>
+
+      <div className="card p-6 space-y-4">
+        <h2 className="text-base font-semibold text-gray-900">Workspace Team</h2>
+        <p className="text-sm text-gray-600">Manage Business seats, role assignments, and team access controls.</p>
+        <div className="flex justify-end">
+          <button type="button" className="btn-secondary" onClick={() => navigate('/settings/team')}>
+            Open Team Settings
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

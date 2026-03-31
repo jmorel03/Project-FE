@@ -143,6 +143,17 @@ export const billingService = {
   cancelSubscription: () => api.post('/billing/cancel-subscription').then((r) => r.data),
 };
 
+export const teamService = {
+  getTeam: () => api.get('/team').then((r) => r.data),
+  addMember: (data) => api.post('/team/members', data).then((r) => r.data),
+  createInvite: (data) => api.post('/team/invites', data).then((r) => r.data),
+  revokeInvite: (inviteId) => api.delete(`/team/invites/${inviteId}`).then((r) => r.data),
+  previewInvite: (token) => api.get(`/team/invites/preview/${token}`).then((r) => r.data),
+  acceptInvite: (token) => api.post('/team/invites/accept', { token }).then((r) => r.data),
+  updateMemberRole: (memberUserId, role) => api.patch(`/team/members/${memberUserId}`, { role }).then((r) => r.data),
+  removeMember: (memberUserId) => api.delete(`/team/members/${memberUserId}`).then((r) => r.data),
+};
+
 export const supportService = {
   sendMessage: (subject, message) => api.post('/support/contact', { subject, message }).then((r) => r.data),
   sendPublicMessage: ({ name, email, subject, message }) => api.post('/support/contact-public', {

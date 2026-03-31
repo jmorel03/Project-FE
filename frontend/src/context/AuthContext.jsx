@@ -26,15 +26,17 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     const data = await authService.login(credentials);
     setAccessToken(data.accessToken);
-    setUser(data.user);
-    return data;
+    const me = await authService.getMe();
+    setUser(me);
+    return { ...data, user: me };
   }, []);
 
   const register = useCallback(async (credentials) => {
     const data = await authService.register(credentials);
     setAccessToken(data.accessToken);
-    setUser(data.user);
-    return data;
+    const me = await authService.getMe();
+    setUser(me);
+    return { ...data, user: me };
   }, []);
 
   const logout = useCallback(async () => {

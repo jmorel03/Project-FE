@@ -243,3 +243,46 @@ exports.sendSupportEmail = async ({ fromName, fromEmail, subject, message }) => 
     html,
   });
 };
+
+exports.sendTeamInviteEmail = async ({
+  ownerName,
+  inviteeEmail,
+  role,
+  inviteUrl,
+  expiresAt,
+}) => {
+  if (!process.env.SMTP_HOST || !process.env.FROM_EMAIL) {
+    return;
+  }
+
+  const transporter = createTransport();
+  const expiresLabel = format(new Date(expiresAt), 'MMMM dd, yyyy');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;background:#f8fafc;margin:0;padding:0;">
+      <div style="max-width:600px;margin:32px auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+        <div style="background:#0f172a;color:#e2e8f0;padding:24px 28px;">
+          <h2 style="margin:0;font-size:20px;">You are invited to join Xpensist</h2>
+          <p style="margin:6px 0 0;font-size:13px;color:#cbd5e1;">${ownerName} invited you as ${role}.</p>
+        </div>
+        <div style="padding:28px;">
+          <p style="margin:0 0 12px;line-height:1.6;">Use the secure invite link below to join the workspace.</p>
+          <p style="margin:0 0 20px;line-height:1.6;">This invite expires on <strong>${expiresLabel}</strong>.</p>
+          <a href="${inviteUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600;">Accept Invite</a>
+          <p style="margin:18px 0 0;font-size:12px;color:#64748b;line-height:1.5;">If the button does not open, copy and paste this URL into your browser:<br>${inviteUrl}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: `"${process.env.FROM_NAME || 'Xpensist'}" <${process.env.FROM_EMAIL}>`,
+    to: inviteeEmail,
+    subject: `${ownerName} invited you to Xpensist`,
+    html,
+  });
+};

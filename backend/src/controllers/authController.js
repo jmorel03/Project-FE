@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
+const { acceptInviteForUser } = require('../lib/teamInvites');
 
 const LOGIN_MAX_FAILED_ATTEMPTS = Math.max(1, Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5));
 const LOGIN_LOCK_MINUTES = Math.max(1, Number(process.env.LOGIN_LOCK_MINUTES || 15));
@@ -56,7 +57,14 @@ const signRefresh = (userId) =>
 
 exports.register = async (req, res, next) => {
   try {
-    const { email, password, firstName, lastName, companyName } = req.body;
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      companyName,
+      inviteToken,
+    } = req.body;
 
     const strength = validatePasswordStrength(password);
     if (!strength.valid) {
@@ -103,6 +111,14 @@ exports.register = async (req, res, next) => {
     await prisma.refreshToken.create({
       data: { token: hashRefreshToken(refreshToken), userId: user.id, expiresAt },
     });
+
+    if (inviteToken) {
+      await acceptInviteForUser({
+        token: inviteToken,
+        userId: user.id,
+        userEmail: user.email,
+      });
+    }
 
     const { password: _pw, ...userWithoutPassword } = user;
     setRefreshCookie(res, refreshToken);
@@ -244,8 +260,9 @@ exports.logout = async (req, res, next) => {
 
 exports.getMe = async (req, res, next) => {
   try {
+    const actorUserId = req.actorUserId || req.userId;
     const user = await prisma.user.findUnique({
-      where: { id: req.userId },
+      where: { id: actorUserId },
       select: {
         id: true, email: true, firstName: true, lastName: true,
         companyName: true, companyLogo: true, address: true, city: true,
@@ -254,7 +271,15 @@ exports.getMe = async (req, res, next) => {
       },
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+    res.json({
+      ...user,
+      workspace: {
+        ownerUserId: req.workspaceOwnerId || actorUserId,
+        role: req.workspaceRole || 'admin',
+        actorUserId,
+        isTeamMember: Boolean(req.isTeamMember),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -262,6 +287,7 @@ exports.getMe = async (req, res, next) => {
 
 exports.updateProfile = async (req, res, next) => {
   try {
+    const actorUserId = req.actorUserId || req.userId;
     const allowed = [
       'firstName', 'lastName', 'companyName', 'companyLogo', 'address',
       'city', 'state', 'zip', 'country', 'phone', 'currency', 'taxNumber',
@@ -273,7 +299,7 @@ exports.updateProfile = async (req, res, next) => {
 
     if (req.body.email) {
       const conflict = await prisma.user.findFirst({
-        where: { email: req.body.email, id: { not: req.userId } },
+        where: { email: req.body.email, id: { not: actorUserId } },
       });
       if (conflict) return res.status(409).json({ error: 'Email already in use' });
       data.email = req.body.email;
@@ -284,7 +310,7 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     const user = await prisma.user.update({
-      where: { id: req.userId },
+      where: { id: actorUserId },
       data,
       select: {
         id: true, email: true, firstName: true, lastName: true,
@@ -301,6 +327,7 @@ exports.updateProfile = async (req, res, next) => {
 
 exports.changePassword = async (req, res, next) => {
   try {
+    const actorUserId = req.actorUserId || req.userId;
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -308,7 +335,7 @@ exports.changePassword = async (req, res, next) => {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.userId },
+      where: { id: actorUserId },
       select: { id: true, password: true },
     });
 

@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import toast from 'react-hot-toast';
@@ -17,6 +17,8 @@ export default function Login() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = String(searchParams.get('invite') || '').trim();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
   });
@@ -24,6 +26,10 @@ export default function Login() {
   const onSubmit = async (data) => {
     try {
       await login(data);
+      if (inviteToken) {
+        navigate(`/invite/${encodeURIComponent(inviteToken)}`);
+        return;
+      }
       navigate('/dashboard');
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Login failed');
@@ -48,6 +54,9 @@ export default function Login() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Xpensist</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+          {inviteToken && (
+            <p className="text-xs text-primary-700 mt-2">Sign in with your invited email to accept this team invite.</p>
+          )}
         </div>
 
         <div className="card p-8 shadow-lg shadow-slate-200/70">
@@ -74,7 +83,7 @@ export default function Login() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-primary-600 font-medium hover:underline">Create one</Link>
+          <Link to={inviteToken ? `/register?invite=${encodeURIComponent(inviteToken)}` : '/register'} className="text-primary-600 font-medium hover:underline">Create one</Link>
         </p>
 
         <p className="mx-auto mt-4 max-w-xs text-center text-xs leading-5 text-gray-500">

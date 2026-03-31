@@ -7,6 +7,7 @@ import Faq from './pages/Faq';
 import ContactSupport from './pages/ContactSupport';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import InviteAccept from './pages/InviteAccept';
 import NotFound from './pages/NotFound';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -17,6 +18,7 @@ import InvoiceView from './pages/InvoiceView';
 import Expenses from './pages/Expenses';
 import Clients from './pages/Clients';
 import Settings from './pages/Settings';
+import TeamSettings from './pages/TeamSettings';
 import Subscription from './pages/Subscription';
 import Support from './pages/Support';
 
@@ -47,6 +49,7 @@ function AppRoutes() {
       <Route path="/contact-support" element={<ContactSupport />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/invite/:token" element={<InviteAccept />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
@@ -59,6 +62,7 @@ function AppRoutes() {
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/settings/subscription" element={<Subscription />} />
+        <Route path="/settings/team" element={<TeamSettings />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/settings/support" element={<Navigate to="/support" replace />} />
         <Route path="/support" element={<Support />} />

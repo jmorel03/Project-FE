@@ -22,10 +22,11 @@ function canonicalizeEmail(email) {
 
 exports.requireAdmin = async (req, res, next) => {
   try {
-    if (!req.userId) return res.status(401).json({ error: 'Unauthorized' });
+    const actorUserId = req.actorUserId || req.userId;
+    if (!actorUserId) return res.status(401).json({ error: 'Unauthorized' });
 
     const user = await prisma.user.findUnique({
-      where: { id: req.userId },
+      where: { id: actorUserId },
       select: { id: true, email: true },
     });
 

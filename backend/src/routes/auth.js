@@ -24,6 +24,7 @@ router.post('/register', requireTrustedOrigin, [
     .matches(/[^A-Za-z0-9]/).withMessage('Password must include at least one special character'),
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
+  body('inviteToken').optional().isString().isLength({ min: 24 }),
 ], validate, register);
 
 router.post('/login', requireTrustedOrigin, [

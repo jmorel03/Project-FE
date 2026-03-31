@@ -44,6 +44,61 @@ model User {
   expenses      Expense[]
   categories    ExpenseCategory[]
   subscriptions BillingSubscription[]
+  ownedTeamMembers TeamMember[] @relation("TeamOwnerMembers")
+  teamMembership TeamMember? @relation("TeamMemberUser")
+  sentTeamInvites TeamInvite[] @relation("TeamInviteSender")
+  acceptedTeamInvites TeamInvite[] @relation("TeamInviteAccepter")
+  ownedTeamInvites TeamInvite[] @relation("TeamInviteOwner")
+}
+
+enum TeamRole {
+  ADMIN
+  WORKER
+}
+
+enum TeamInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model TeamMember {
+  id           String   @id @default(uuid())
+  ownerUserId  String
+  memberUserId String   @unique
+  role         TeamRole @default(WORKER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner  User @relation("TeamOwnerMembers", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  member User @relation("TeamMemberUser", fields: [memberUserId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerUserId, memberUserId])
+  @@index([ownerUserId, isActive])
+}
+
+model TeamInvite {
+  id               String           @id @default(uuid())
+  ownerUserId      String
+  invitedByUserId  String
+  acceptedByUserId String?
+  email            String
+  role             TeamRole         @default(WORKER)
+  tokenHash        String           @unique
+  status           TeamInviteStatus @default(PENDING)
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  owner      User  @relation("TeamInviteOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  invitedBy  User  @relation("TeamInviteSender", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy User? @relation("TeamInviteAccepter", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId, status])
+  @@index([email, status])
 }
 
 model PasswordHistory {

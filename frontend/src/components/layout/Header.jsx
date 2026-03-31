@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 export default function Header() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const workspaceRole = String(user?.workspace?.role || 'admin').toLowerCase();
 
   const handleLogout = async () => {
     await logout();
@@ -19,7 +20,12 @@ export default function Header() {
       <div className="flex h-full items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Workspace</p>
-          <p className="text-sm font-semibold text-slate-700">Financial Operations</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-slate-700">Financial Operations</p>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${workspaceRole === 'admin' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
+              {workspaceRole}
+            </span>
+          </div>
         </div>
 
         <Menu as="div" className="relative">
