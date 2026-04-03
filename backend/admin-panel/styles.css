@@ -181,6 +181,14 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; }
 .teams-toolbar-left { flex: 1; min-width: 220px; }
 .teams-toolbar-right { display: flex; gap: 8px; }
 
+.teams-list-card { display: flex; flex-direction: column; }
+.teams-list { display: flex; flex-direction: column; flex: 1; gap: 4px; padding: 12px; min-height: 200px; }
+.team-list-item { padding: 12px 14px; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px; }
+.team-list-item:hover { background: #f0f9ff; border-color: var(--primary); box-shadow: 0 1px 3px rgba(15, 118, 110, 0.1); }
+.team-list-item:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.team-list-name { font-weight: 500; color: var(--ink); }
+.teams-list-footer { border-top: 1px solid var(--line); padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+
 .muted { color: var(--muted); }
 .hidden { display: none !important; }
 .error-msg { color: #dc2626; font-size: 0.82rem; min-height: 1.2em; text-align: center; }

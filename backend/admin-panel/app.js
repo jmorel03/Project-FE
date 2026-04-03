@@ -547,7 +547,7 @@ function renderTeams(payload) {
   els.teamsMeta.textContent = `Showing ${allTeamsData.length} of ${payload.total || 0} teams`;
 
   if (allTeamsData.length === 0) {
-    els.teamsBody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:28px;color:#64748b;">No teams found</td></tr>';
+    els.teamsBody.innerHTML = '<div style="text-align:center;padding:28px;color:#64748b;">No teams found</div>';
     renderTeamsPagination();
     return;
   }
@@ -557,15 +557,9 @@ function renderTeams(payload) {
     const safeOwnerUserId = escapeHtml(team.ownerUserId);
 
     return `
-      <tr class="clickable-row" data-action="view-team" data-owner-user-id="${safeOwnerUserId}" tabindex="0" role="button" aria-label="View ${safeTeamName}">
-        <td><strong>${safeTeamName}</strong></td>
-        <td>
-          <div class="action-btns">
-            <button class="btn sm" data-action="view-team" data-owner-user-id="${safeOwnerUserId}">Open Workspace</button>
-            <button class="btn sm" data-action="view-owner" data-owner-user-id="${safeOwnerUserId}">Open Owner Record</button>
-          </div>
-        </td>
-      </tr>
+      <div class="team-list-item" data-action="view-team" data-owner-user-id="${safeOwnerUserId}" tabindex="0" role="button" aria-label="View ${safeTeamName}">
+        <span class="team-list-name">${safeTeamName}</span>
+      </div>
     `;
   }).join('');
 
