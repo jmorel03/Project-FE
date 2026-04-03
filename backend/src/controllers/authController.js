@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 const { acceptInviteForUser } = require('../lib/teamInvites');
+const { sendPasswordResetEmail } = require('../services/emailService');
 
 const LOGIN_MAX_FAILED_ATTEMPTS = Math.max(1, Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5));
 const LOGIN_LOCK_MINUTES = Math.max(1, Number(process.env.LOGIN_LOCK_MINUTES || 15));
@@ -247,6 +248,61 @@ exports.refresh = async (req, res, next) => {
     res.json({ accessToken: newAccess });
   } catch (err) {
     next(err);
+  }
+};
+
+exports.requestPasswordReset = async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const genericResponse = {
+      message: 'If an account exists for that email, a password reset link has been sent.',
+    };
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        companyName: true,
+      },
+    });
+
+    if (!user) {
+      return res.json(genericResponse);
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    await prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const baseClientUrl = String(process.env.CLIENT_URL || '').trim().replace(/\/$/, '');
+    if (baseClientUrl) {
+      const resetUrl = `${baseClientUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+      await sendPasswordResetEmail({
+        user,
+        resetUrl,
+        expiresAt,
+      });
+    }
+
+    return res.json(genericResponse);
+  } catch (err) {
+    return next(err);
   }
 };
 

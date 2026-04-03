@@ -1,11 +1,13 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
+import { authService } from '../../services/api';
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -17,10 +19,11 @@ export default function Login() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const [searchParams] = useSearchParams();
   const inviteToken = String(searchParams.get('invite') || '').trim();
   const invitedEmail = String(searchParams.get('email') || '').trim().toLowerCase();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, getValues, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       email: invitedEmail || '',
@@ -37,6 +40,24 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Login failed');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const email = String(getValues('email') || '').trim().toLowerCase();
+    if (!email) {
+      toast.error('Enter your email first, then click Forgot password.');
+      return;
+    }
+
+    setIsSendingReset(true);
+    try {
+      const res = await authService.forgotPassword({ email });
+      toast.success(res?.message || 'If the email exists, a reset link has been sent.');
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Could not send reset link');
+    } finally {
+      setIsSendingReset(false);
     }
   };
 
@@ -79,6 +100,16 @@ export default function Login() {
               error={errors.password?.message}
               {...register('password')}
             />
+            <div className="-mt-1 text-right">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={isSendingReset}
+                className="text-sm font-medium text-primary-600 hover:underline disabled:opacity-60"
+              >
+                {isSendingReset ? 'Sending reset link...' : 'Forgot password?'}
+              </button>
+            </div>
             <button type="submit" disabled={isSubmitting} className="btn-primary w-full justify-center py-2.5">
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>

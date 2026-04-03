@@ -286,3 +286,42 @@ exports.sendTeamInviteEmail = async ({
     html,
   });
 };
+
+exports.sendPasswordResetEmail = async ({ user, resetUrl, expiresAt }) => {
+  if (!process.env.SMTP_HOST || !process.env.FROM_EMAIL) {
+    return;
+  }
+
+  const transporter = createTransport();
+  const name = String(user?.firstName || '').trim() || String(user?.email || 'there');
+  const expiresLabel = format(new Date(expiresAt), 'MMMM dd, yyyy h:mm a');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;background:#f8fafc;margin:0;padding:0;">
+      <div style="max-width:600px;margin:32px auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+        <div style="background:#0f766e;color:#ecfeff;padding:24px 28px;">
+          <h2 style="margin:0;font-size:20px;">Reset your Xpensist password</h2>
+          <p style="margin:6px 0 0;font-size:13px;color:#ccfbf1;">Use the secure link below to set a new password.</p>
+        </div>
+        <div style="padding:28px;">
+          <p style="margin:0 0 12px;line-height:1.6;">Hi ${name},</p>
+          <p style="margin:0 0 12px;line-height:1.6;">We received a request to reset your password. This link expires on <strong>${expiresLabel}</strong>.</p>
+          <a href="${resetUrl}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600;">Reset Password</a>
+          <p style="margin:18px 0 0;font-size:12px;color:#64748b;line-height:1.5;">If the button does not open, copy and paste this URL into your browser:<br>${resetUrl}</p>
+          <p style="margin:12px 0 0;font-size:12px;color:#64748b;line-height:1.5;">Password rules: at least 8 characters, one uppercase letter, and one special character.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: `"${process.env.FROM_NAME || 'Xpensist'}" <${process.env.FROM_EMAIL}>`,
+    to: user.email,
+    subject: 'Reset your Xpensist password',
+    html,
+  });
+};

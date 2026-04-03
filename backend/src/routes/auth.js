@@ -7,6 +7,7 @@ const {
   logout,
   getMe,
   updateProfile,
+  requestPasswordReset,
   resetPassword,
   changePassword,
 } = require('../controllers/authController');
@@ -33,6 +34,9 @@ router.post('/login', requireTrustedOrigin, [
 ], validate, login);
 
 router.post('/refresh', requireTrustedOrigin, refresh);
+router.post('/forgot-password', requireTrustedOrigin, [
+  body('email').isEmail().normalizeEmail(),
+], validate, requestPasswordReset);
 router.post('/reset-password', [
   body('token').isString().isLength({ min: 32 }),
   body('newPassword')
