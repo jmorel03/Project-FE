@@ -68,6 +68,7 @@ export default function TeamSettings() {
   const workspaceRole = String(team?.workspace?.actorRole || 'admin').toLowerCase();
   const isWorkspaceAdmin = workspaceRole === 'admin';
   const isBusiness = String(team?.plan?.key || '').toLowerCase() === 'business';
+  const actorUserId = String(team?.workspace?.actorUserId || '');
   const seats = team?.seats || { used: 1, limit: 1, remaining: 0 };
   const ownerSeatUser = team?.ownerSeat?.user || null;
   const ownerSeatName = ownerSeatUser
@@ -77,7 +78,6 @@ export default function TeamSettings() {
   const isOwnerSeatCurrentActor = Boolean(ownerSeatUser?.id) && ownerSeatUser.id === actorUserId;
   const members = team?.members || [];
   const invites = team?.invites || [];
-  const actorUserId = String(team?.workspace?.actorUserId || '');
   const ownerUserId = String(team?.workspace?.ownerUserId || '');
   const isOwnerActor = Boolean(actorUserId) && actorUserId === ownerUserId;
   const nextWorkspaceName = String(workspaceName || '').trim();
