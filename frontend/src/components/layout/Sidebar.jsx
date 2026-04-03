@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   HomeIcon,
   DocumentTextIcon,
@@ -9,6 +10,8 @@ import {
   Cog6ToothIcon,
   LifebuoyIcon,
 } from '@heroicons/react/24/outline';
+import { billingService } from '../../services/api';
+import { isPlanAtLeast, resolveActivePlanKey } from '../../lib/billing';
 
 const navItems = [
   { to: '/dashboard', icon: HomeIcon, label: 'Dashboard' },
@@ -22,6 +25,15 @@ const navItems = [
 ];
 
 export default function Sidebar() {
+  const billingSummaryQuery = useQuery({
+    queryKey: ['billing-summary'],
+    queryFn: billingService.getSummary,
+    staleTime: 60 * 1000,
+  });
+
+  const activePlanKey = resolveActivePlanKey(billingSummaryQuery.data);
+  const hasBusinessTier = isPlanAtLeast(activePlanKey, 'business');
+
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-200/80 bg-white/88 backdrop-blur">
       {/* Logo */}
@@ -51,7 +63,14 @@ export default function Sidebar() {
             }
           >
             <Icon className="h-5 w-5 shrink-0" />
-            {label}
+            <span className="flex items-center gap-2">
+              <span>{label}</span>
+              {to === '/settings/team' && !hasBusinessTier ? (
+                <span className="rounded-md bg-amber-300 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
+                  Business
+                </span>
+              ) : null}
+            </span>
           </NavLink>
         ))}
       </nav>
