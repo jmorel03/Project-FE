@@ -460,7 +460,6 @@ exports.getTeams = async (req, res, next) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const search = String(req.query.search || '').trim();
-    const canonicalTeamName = (name) => String(name || '').trim().replace(/\s+\(#\d+\)$/i, '');
 
     const where = search
       ? {
@@ -474,44 +473,35 @@ exports.getTeams = async (req, res, next) => {
         }
       : {};
 
-    const allWorkspaces = await prisma.teamWorkspace.findMany({
-      where,
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        ownerUserId: true,
-        name: true,
-        updatedAt: true,
-        owner: {
-          select: {
-            email: true,
-            firstName: true,
-            lastName: true,
-            companyName: true,
-            subscriptions: {
-              where: { status: { in: ['active', 'trialing'] } },
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-              select: { planKey: true, status: true },
+    const [total, workspaces] = await Promise.all([
+      prisma.teamWorkspace.count({ where }),
+      prisma.teamWorkspace.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          ownerUserId: true,
+          name: true,
+          updatedAt: true,
+          owner: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+              companyName: true,
+              subscriptions: {
+                where: { status: { in: ['active', 'trialing'] } },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { planKey: true, status: true },
+              },
             },
           },
         },
-      },
-    });
-
-    // Keep only one workspace per canonical team name for admin tab organization.
-    const seenNames = new Set();
-    const uniqueWorkspaces = allWorkspaces.filter((workspace) => {
-      const canonicalName = canonicalTeamName(workspace.name).toLowerCase();
-      if (!canonicalName || seenNames.has(canonicalName)) {
-        return false;
-      }
-      seenNames.add(canonicalName);
-      return true;
-    });
-
-    const total = uniqueWorkspaces.length;
-    const workspaces = uniqueWorkspaces.slice((page - 1) * limit, page * limit);
+      }),
+    ]);
 
     const ownerIds = workspaces.map((w) => w.ownerUserId);
     const memberCounts = ownerIds.length

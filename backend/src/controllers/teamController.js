@@ -15,13 +15,7 @@ const {
   createRawInviteToken,
   acceptInviteForUser,
 } = require('../lib/teamInvites');
-
-function deriveWorkspaceName(owner) {
-  const company = String(owner?.companyName || '').trim();
-  if (company) return company;
-  const personal = [owner?.firstName, owner?.lastName].map((v) => String(v || '').trim()).filter(Boolean).join(' ');
-  return personal ? `${personal} Workspace` : 'Team Workspace';
-}
+const { deriveWorkspaceName, resolveUniqueWorkspaceName } = require('../lib/workspaceNames');
 
 async function ensureWorkspace(ownerUserId) {
   const owner = await prisma.user.findUnique({
@@ -31,16 +25,46 @@ async function ensureWorkspace(ownerUserId) {
 
   if (!owner) return null;
 
-  return prisma.teamWorkspace.upsert({
+  const existingWorkspace = await prisma.teamWorkspace.findUnique({
     where: { ownerUserId },
-    create: {
-      id: ownerUserId,
-      ownerUserId,
-      name: deriveWorkspaceName(owner),
-    },
-    update: {},
     select: { id: true, ownerUserId: true, name: true, createdAt: true, updatedAt: true },
   });
+
+  if (existingWorkspace) {
+    return existingWorkspace;
+  }
+
+  const preferredName = deriveWorkspaceName(owner);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const uniqueName = await resolveUniqueWorkspaceName(preferredName, { excludeOwnerUserId: ownerUserId });
+
+    try {
+      return await prisma.teamWorkspace.create({
+        data: {
+          id: ownerUserId,
+          ownerUserId,
+          name: uniqueName,
+        },
+        select: { id: true, ownerUserId: true, name: true, createdAt: true, updatedAt: true },
+      });
+    } catch (error) {
+      if (error?.code !== 'P2002') {
+        throw error;
+      }
+
+      const workspaceByOwner = await prisma.teamWorkspace.findUnique({
+        where: { ownerUserId },
+        select: { id: true, ownerUserId: true, name: true, createdAt: true, updatedAt: true },
+      });
+
+      if (workspaceByOwner) {
+        return workspaceByOwner;
+      }
+    }
+  }
+
+  throw new Error('Unable to create workspace with a unique name');
 }
 
 function buildClientUrl(req) {
@@ -227,6 +251,18 @@ exports.updateTeamWorkspace = async (req, res, next) => {
 
     if (name.length > 80) {
       return res.status(400).json({ error: 'Workspace name must be 80 characters or less' });
+    }
+
+    const conflictingWorkspace = await prisma.teamWorkspace.findFirst({
+      where: {
+        name,
+        NOT: { ownerUserId },
+      },
+      select: { id: true },
+    });
+
+    if (conflictingWorkspace) {
+      return res.status(409).json({ error: 'Workspace name is already in use' });
     }
 
     const workspace = await ensureWorkspace(ownerUserId);

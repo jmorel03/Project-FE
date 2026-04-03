@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 const { acceptInviteForUser } = require('../lib/teamInvites');
+const { deriveWorkspaceName, resolveUniqueWorkspaceName } = require('../lib/workspaceNames');
 const { sendPasswordResetEmail } = require('../services/emailService');
 
 const LOGIN_MAX_FAILED_ATTEMPTS = Math.max(1, Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5));
@@ -115,13 +116,31 @@ exports.register = async (req, res, next) => {
       },
     });
 
-    await prisma.teamWorkspace.create({
-      data: {
-        id: user.id,
-        ownerUserId: user.id,
-        name: String(companyName || '').trim() || `${firstName} ${lastName}`.trim() || 'Team Workspace',
-      },
-    });
+    const preferredWorkspaceName = deriveWorkspaceName(user);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const uniqueWorkspaceName = await resolveUniqueWorkspaceName(preferredWorkspaceName, {
+        excludeOwnerUserId: user.id,
+      });
+
+      try {
+        await prisma.teamWorkspace.create({
+          data: {
+            id: user.id,
+            ownerUserId: user.id,
+            name: uniqueWorkspaceName,
+          },
+        });
+        break;
+      } catch (workspaceError) {
+        if (workspaceError?.code !== 'P2002') {
+          throw workspaceError;
+        }
+
+        if (attempt === 2) {
+          throw workspaceError;
+        }
+      }
+    }
 
     const accessToken = signAccess(user.id);
     const refreshToken = signRefresh(user.id);
