@@ -79,6 +79,7 @@ const adminAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: 'Too many admin auth attempts, please try again later.' },
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
 });

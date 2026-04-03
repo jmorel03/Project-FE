@@ -112,6 +112,8 @@ exports.getUsers = async (req, res, next) => {
     // Status filter
     if (statusFilter === 'suspended') {
       conditions.push({ isSuspended: true });
+    } else if (statusFilter === 'locked') {
+      conditions.push({ lockUntil: { gt: new Date() } });
     } else if (statusFilter === 'active') {
       conditions.push({ subscriptions: { some: { status: 'active' } } });
     } else if (statusFilter === 'trialing') {
@@ -145,6 +147,8 @@ exports.getUsers = async (req, res, next) => {
           isSuspended: true,
           suspendedAt: true,
           suspensionReason: true,
+          failedLoginAttempts: true,
+          lockUntil: true,
           createdAt: true,
           subscriptions: {
             orderBy: { createdAt: 'desc' },
@@ -177,6 +181,8 @@ exports.getUsers = async (req, res, next) => {
         isSuspended: user.isSuspended,
         suspendedAt: user.suspendedAt,
         suspensionReason: user.suspensionReason,
+        failedLoginAttempts: user.failedLoginAttempts || 0,
+        lockUntil: user.lockUntil,
         createdAt: user.createdAt,
         subscription: resolveUserPlan(user.subscriptions),
         invoiceCount: user._count.invoices,
@@ -216,6 +222,45 @@ exports.suspendUser = async (req, res, next) => {
   } catch (err) {
     await logAdminAction(req, {
       action: 'user.suspend',
+      targetUserId: req.params.id,
+      status: 'failed',
+      metadata: { error: err.message },
+    });
+    next(err);
+  }
+};
+
+exports.resetUserLockout = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: 0,
+        lockUntil: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        failedLoginAttempts: true,
+        lockUntil: true,
+      },
+    });
+
+    await logAdminAction(req, {
+      action: 'user.lockout_reset',
+      targetUserId: userId,
+      metadata: { email: updated.email },
+    });
+
+    res.json({
+      message: `Login lockout reset for ${updated.email}`,
+      user: updated,
+    });
+  } catch (err) {
+    await logAdminAction(req, {
+      action: 'user.lockout_reset',
       targetUserId: req.params.id,
       status: 'failed',
       metadata: { error: err.message },

@@ -81,6 +81,7 @@ th { background: #f8fafc; font-size: 0.76rem; text-transform: uppercase; color: 
 .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #0891b2); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
 .user-cell-name { font-weight: 600; }
 .user-cell-email { font-size: 0.75rem; color: var(--muted); }
+.user-cell-meta { font-size: 0.72rem; color: #b91c1c; margin-top: 2px; }
 .action-btns { display: flex; gap: 6px; }
 
 .badge, .plan-badge { display: inline-block; padding: 3px 8px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
@@ -88,6 +89,7 @@ th { background: #f8fafc; font-size: 0.76rem; text-transform: uppercase; color: 
 .badge.trialing { background: var(--warning-light); color: #92400e; }
 .badge.free { background: #f1f5f9; color: #64748b; }
 .badge.suspended { background: var(--danger-light); color: #991b1b; }
+.badge.locked { background: #fee2e2; color: #991b1b; }
 .plan-badge.starter { background: #f1f5f9; color: #475569; }
 .plan-badge.professional { background: #dbeafe; color: #1d4ed8; }
 .plan-badge.business { background: #f3e8ff; color: #7c3aed; }

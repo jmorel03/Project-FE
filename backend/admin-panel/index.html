@@ -23,8 +23,8 @@
             <button type="button" id="togglePassword" class="input-addon">Show</button>
           </div>
         </label>
-        <label>TOTP Code<input id="totp" type="text" inputmode="numeric" maxlength="8" placeholder="123456" required /></label>
-        <button class="btn primary full" type="submit" id="loginBtn">Sign In</button>
+        <p class="muted" style="font-size: 0.8rem;">After your password is verified, a TOTP prompt will appear.</p>
+        <button class="btn primary full" type="submit" id="loginBtn">Continue</button>
         <p id="loginError" class="error-msg"></p>
       </form>
     </div>
@@ -95,6 +95,7 @@
                   <option value="active">Active</option>
                   <option value="trialing">Trialing</option>
                   <option value="free">Free</option>
+                  <option value="locked">Locked</option>
                   <option value="suspended">Suspended</option>
                 </select>
                 <button id="searchBtn" class="btn primary">Search</button>

@@ -10,14 +10,20 @@ const {
 	getTeams,
 	getTeamByOwner,
 	suspendUser,
+	resetUserLockout,
 	resetUserPassword,
 	cancelUserSubscription,
 	deleteUserAccount,
 } = require('../controllers/adminController');
-const { adminLogin } = require('../controllers/adminAuthController');
+const { adminLogin, adminPreflight } = require('../controllers/adminAuthController');
 const { validate } = require('../middleware/validate');
 
 const router = Router();
+
+router.post('/auth/preflight', requireTrustedAdminOrigin, requireAdminIpAllowlist, [
+	body('email').isEmail().normalizeEmail(),
+	body('password').notEmpty(),
+], validate, adminPreflight);
 
 router.post('/auth/login', requireTrustedAdminOrigin, requireAdminIpAllowlist, [
 	body('email').isEmail().normalizeEmail(),
@@ -36,6 +42,9 @@ router.post('/users/:id/suspend', [
 	body('suspended').optional().isBoolean(),
 	body('reason').optional().isString().isLength({ max: 500 }),
 ], validate, suspendUser);
+router.post('/users/:id/reset-lockout', [
+	param('id').isUUID(),
+], validate, resetUserLockout);
 router.post('/users/:id/reset-password', [
 	param('id').isUUID(),
 	body('newPassword').isString().isLength({ min: 8 }),

@@ -29,7 +29,6 @@ const els = {
   loginBtn: document.getElementById('loginBtn'),
   email: document.getElementById('email'),
   password: document.getElementById('password'),
-  totp: document.getElementById('totp'),
   togglePassword: document.getElementById('togglePassword'),
   logoutBtn: document.getElementById('logoutBtn'),
   adminEmail: document.getElementById('adminEmail'),
@@ -94,6 +93,22 @@ function formatRelative(dateStr) {
   if (days < 30) return `${days}d ago`;
   if (days < 365) return `${Math.floor(days / 30)}mo ago`;
   return `${Math.floor(days / 365)}y ago`;
+}
+
+function isUserLocked(user) {
+  if (!user?.lockUntil) return false;
+  return new Date(user.lockUntil).getTime() > Date.now();
+}
+
+function formatLockUntil(dateStr) {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function initials(name) {
@@ -229,6 +244,7 @@ function planBadge(planKey, cancelAtPeriodEnd) {
 
 function statusBadge(user, sub) {
   if (user.isSuspended) return '<span class="badge suspended">Suspended</span>';
+  if (isUserLocked(user)) return '<span class="badge locked">Locked</span>';
   const s = String(sub?.status || 'free').toLowerCase();
   if (s === 'active') return '<span class="badge active">Active</span>';
   if (s === 'trialing') return '<span class="badge trialing">Trial</span>';
@@ -310,6 +326,10 @@ function renderUsers(payload) {
     const isActivePlan = sub?.status === 'active' || sub?.status === 'trialing';
     const planKey = isActivePlan ? (sub.planKey || 'starter') : 'starter';
     const periodEnd = isActivePlan && sub.currentPeriodEnd ? formatDate(sub.currentPeriodEnd) : '-';
+    const currentlyLocked = isUserLocked(user);
+    const lockMeta = currentlyLocked
+      ? `<div class="user-cell-meta">Locked until ${formatLockUntil(user.lockUntil)}</div>`
+      : '';
     const safeName = escapeHtml(user.name);
     const safeEmail = escapeHtml(user.email);
     const safeUserId = escapeHtml(user.id);
@@ -322,6 +342,7 @@ function renderUsers(payload) {
             <div>
               <div class="user-cell-name">${safeName}</div>
               <div class="user-cell-email">${safeEmail}</div>
+              ${lockMeta}
             </div>
           </div>
         </td>
@@ -333,6 +354,7 @@ function renderUsers(payload) {
         <td>
           <div class="action-btns">
             <button class="btn sm" data-action="suspend" data-user-id="${safeUserId}" data-user-email="${safeEmail}" data-suspended="${user.isSuspended}">${user.isSuspended ? 'Unsuspend' : 'Suspend'}</button>
+            <button class="btn sm" data-action="reset-lockout" data-user-id="${safeUserId}" data-user-email="${safeEmail}">${currentlyLocked ? 'Unlock' : 'Reset Lockout'}</button>
             <button class="btn sm" data-action="reset-password" data-user-id="${safeUserId}" data-user-email="${safeEmail}">Reset PW</button>
             ${isActivePlan && !sub?.cancelAtPeriodEnd ? `<button class="btn sm" data-action="cancel-sub" data-user-id="${safeUserId}" data-user-email="${safeEmail}">Cancel Sub</button>` : ''}
             <button class="btn sm danger" data-action="delete-account" data-user-id="${safeUserId}" data-user-email="${safeEmail}">Delete Account</button>
@@ -621,6 +643,21 @@ async function handleUserAction(event) {
       showToast(`Password updated for ${userEmail}`);
     }
 
+    if (action === 'reset-lockout') {
+      const result = await openModal({
+        title: 'Reset Login Lockout',
+        message: `Clear failed login attempts and unlock ${userEmail} now?`,
+        confirmLabel: 'Reset Lockout',
+      });
+      if (!result.confirmed) return;
+
+      await apiFetch(`/admin/users/${userId}/reset-lockout`, {
+        method: 'POST',
+      });
+
+      showToast(`Lockout reset for ${userEmail}`);
+    }
+
     if (action === 'cancel-sub') {
       const result = await openModal({
         title: 'Cancel Subscription',
@@ -687,14 +724,40 @@ function showLogin(message = '') {
 
 els.loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  els.loginBtn.textContent = 'Signing in...';
+  els.loginBtn.textContent = 'Verifying...';
   els.loginBtn.disabled = true;
   els.loginError.textContent = '';
 
   try {
     const email = els.email.value.trim().toLowerCase();
     const password = els.password.value;
-    const totp = els.totp.value.trim();
+
+    const preflightRes = await fetch(`${API_BASE}/admin/auth/preflight`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const preflightBody = await preflightRes.json();
+    if (!preflightRes.ok) throw new Error(preflightBody?.error || 'Unable to verify credentials');
+
+    const modalResult = await openModal({
+      title: 'Two-Factor Verification',
+      message: 'Enter the TOTP code from your authenticator app to finish signing in.',
+      confirmLabel: 'Sign In',
+      showInput: true,
+      inputLabel: 'TOTP Code',
+      inputPlaceholder: '123456',
+      inputType: 'text',
+      hideCancel: false,
+    });
+    if (!modalResult.confirmed) return;
+
+    const totp = String(modalResult.input || '').trim();
+    if (!/^\d{6,8}$/.test(totp)) {
+      throw new Error('TOTP must be a 6-8 digit code');
+    }
+
+    els.loginBtn.textContent = 'Signing in...';
 
     const res = await fetch(`${API_BASE}/admin/auth/login`, {
       method: 'POST',
@@ -711,7 +774,7 @@ els.loginForm.addEventListener('submit', async (event) => {
   } catch (error) {
     els.loginError.textContent = error.message || 'Unable to sign in';
   } finally {
-    els.loginBtn.textContent = 'Sign In';
+    els.loginBtn.textContent = 'Continue';
     els.loginBtn.disabled = false;
   }
 });

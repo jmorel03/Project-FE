@@ -93,36 +93,64 @@ function signAdminAccessToken(userId) {
   );
 }
 
+async function verifyAdminCredentials({ email, password }) {
+  const user = await prisma.user.findUnique({ where: { email: canonicalizeEmail(email) } });
+  if (!user) return { errorStatus: 401, error: 'Invalid admin credentials' };
+
+  if (user.lockUntil && user.lockUntil > new Date()) {
+    return { errorStatus: 429, error: 'Too many failed admin login attempts. Please try again later.' };
+  }
+
+  if (user.isSuspended) return { errorStatus: 403, error: 'Account suspended' };
+
+  const validPassword = await bcrypt.compare(String(password || ''), user.password);
+  if (!validPassword) {
+    const locked = await recordAdminFailedAttempt(user);
+    if (locked) {
+      return { errorStatus: 429, error: 'Too many failed admin login attempts. Please try again later.' };
+    }
+    return { errorStatus: 401, error: 'Invalid admin credentials' };
+  }
+
+  if (!isAdminUser(user)) return { errorStatus: 403, error: 'Admin access required' };
+
+  const totpSecrets = parseTotpSecrets(process.env.ADMIN_TOTP_SECRETS);
+  const secret = totpSecrets.get(canonicalizeEmail(user.email));
+  if (!secret) {
+    return { errorStatus: 503, error: 'TOTP is not configured for this admin account' };
+  }
+
+  return { user, secret };
+}
+
+exports.adminPreflight = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const verified = await verifyAdminCredentials({ email, password });
+    if (verified.error) {
+      return res.status(verified.errorStatus || 400).json({ error: verified.error });
+    }
+
+    return res.json({
+      requiresTotp: true,
+      email: verified.user.email,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 exports.adminLogin = async (req, res, next) => {
   try {
     const { email, password, totp } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email: canonicalizeEmail(email) } });
-    if (!user) return res.status(401).json({ error: 'Invalid admin credentials' });
-
-    if (user.lockUntil && user.lockUntil > new Date()) {
-      return res.status(429).json({ error: 'Too many failed admin login attempts. Please try again later.' });
+    const verified = await verifyAdminCredentials({ email, password });
+    if (verified.error) {
+      return res.status(verified.errorStatus || 400).json({ error: verified.error });
     }
 
-    if (user.isSuspended) return res.status(403).json({ error: 'Account suspended' });
-
-    const validPassword = await bcrypt.compare(String(password || ''), user.password);
-    if (!validPassword) {
-      const locked = await recordAdminFailedAttempt(user);
-      if (locked) {
-        return res.status(429).json({ error: 'Too many failed admin login attempts. Please try again later.' });
-      }
-      return res.status(401).json({ error: 'Invalid admin credentials' });
-    }
-
-    if (!isAdminUser(user)) return res.status(403).json({ error: 'Admin access required' });
-
-    const totpSecrets = parseTotpSecrets(process.env.ADMIN_TOTP_SECRETS);
-    const secret = totpSecrets.get(canonicalizeEmail(user.email));
-
-    if (!secret) {
-      return res.status(503).json({ error: 'TOTP is not configured for this admin account' });
-    }
+    const { user, secret } = verified;
 
     const verification = await otplib.verify({
       token: String(totp || '').replace(/\s+/g, ''),
