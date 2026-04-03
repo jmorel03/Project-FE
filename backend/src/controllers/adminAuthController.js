@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const otplib = require('otplib');
 const { v4: uuidv4 } = require('uuid');
 const prisma = require('../lib/prisma');
+const { validatePasswordStrength, isRecentPasswordReuse } = require('../lib/passwordPolicy');
 
 const ADMIN_LOGIN_MAX_FAILED_ATTEMPTS = Math.max(
   1,
@@ -181,6 +182,75 @@ exports.adminLogin = async (req, res, next) => {
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Admin',
       },
     });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.adminForgotPassword = async (req, res, next) => {
+  try {
+    const { email, totp, newPassword } = req.body;
+    const normalizedEmail = canonicalizeEmail(email);
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) {
+      return res.status(404).json({ error: 'Admin user not found' });
+    }
+
+    if (!isAdminUser(user)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const totpSecrets = parseTotpSecrets(process.env.ADMIN_TOTP_SECRETS);
+    const secret = totpSecrets.get(canonicalizeEmail(user.email));
+    if (!secret) {
+      return res.status(503).json({ error: 'TOTP is not configured for this admin account' });
+    }
+
+    const verification = await otplib.verify({
+      token: String(totp || '').replace(/\s+/g, ''),
+      secret,
+    });
+
+    if (!verification?.valid) {
+      return res.status(401).json({ error: 'Invalid TOTP code' });
+    }
+
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      return res.status(400).json({ error: strength.message });
+    }
+
+    const reused = await isRecentPasswordReuse(user.id, newPassword, user.password);
+    if (reused) {
+      return res.status(400).json({ error: 'New password cannot match current or last 5 passwords' });
+    }
+
+    const nextHash = await bcrypt.hash(String(newPassword), 12);
+
+    await prisma.$transaction([
+      prisma.passwordHistory.create({
+        data: {
+          userId: user.id,
+          passwordHash: user.password,
+        },
+      }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: nextHash,
+          failedLoginAttempts: 0,
+          lockUntil: null,
+        },
+      }),
+      prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+    ]);
+
+    return res.json({ message: 'Password reset successful. Please log in again.' });
   } catch (err) {
     return next(err);
   }

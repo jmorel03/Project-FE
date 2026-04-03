@@ -107,6 +107,8 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; }
 .btn.danger { background: var(--danger); color: #fff; border-color: transparent; }
 .btn.sm { padding: 5px 9px; font-size: 0.76rem; }
 .btn.full { width: 100%; }
+.link-btn { border: none; background: none; color: var(--primary); font-size: 0.82rem; text-align: center; cursor: pointer; padding: 4px 0; }
+.link-btn:hover { text-decoration: underline; }
 
 .pagination { display: flex; gap: 4px; }
 .page-btn { border: 1px solid var(--line); background: #fff; border-radius: 6px; min-width: 30px; height: 30px; cursor: pointer; }

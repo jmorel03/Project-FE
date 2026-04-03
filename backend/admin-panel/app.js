@@ -27,6 +27,7 @@ const els = {
   loginForm: document.getElementById('loginForm'),
   loginError: document.getElementById('loginError'),
   loginBtn: document.getElementById('loginBtn'),
+  forgotPasswordBtn: document.getElementById('forgotPasswordBtn'),
   email: document.getElementById('email'),
   password: document.getElementById('password'),
   togglePassword: document.getElementById('togglePassword'),
@@ -783,6 +784,77 @@ els.togglePassword?.addEventListener('click', () => {
   const isText = els.password.type === 'text';
   els.password.type = isText ? 'password' : 'text';
   els.togglePassword.textContent = isText ? 'Show' : 'Hide';
+});
+
+els.forgotPasswordBtn?.addEventListener('click', async () => {
+  els.loginError.textContent = '';
+
+  try {
+    const identityResult = await openModal({
+      title: 'Forgot Password',
+      message: 'Enter your admin email and TOTP code to verify identity.',
+      confirmLabel: 'Continue',
+      showInput: true,
+      inputLabel: 'Admin Email',
+      inputValue: els.email.value.trim().toLowerCase(),
+      inputPlaceholder: 'owner@xpensist.com',
+      inputType: 'email',
+      showInputConfirm: true,
+      inputConfirmLabel: 'TOTP Code',
+      inputConfirmPlaceholder: '123456',
+      inputConfirmType: 'text',
+    });
+    if (!identityResult.confirmed) return;
+
+    const email = String(identityResult.input || '').trim().toLowerCase();
+    const totp = String(identityResult.inputConfirm || '').trim();
+
+    if (!email) {
+      throw new Error('Email is required');
+    }
+    if (!/^\d{6,8}$/.test(totp)) {
+      throw new Error('TOTP must be a 6-8 digit code');
+    }
+
+    const passwordResult = await openModal({
+      title: 'Set New Password',
+      message: 'Password rules: at least 8 characters, one uppercase letter, and one special character.',
+      confirmLabel: 'Reset Password',
+      showInput: true,
+      inputLabel: 'New Password',
+      inputPlaceholder: 'Type new password',
+      inputType: 'password',
+      showInputConfirm: true,
+      inputConfirmLabel: 'Confirm New Password',
+      inputConfirmPlaceholder: 'Retype new password',
+      inputConfirmType: 'password',
+    });
+    if (!passwordResult.confirmed) return;
+
+    const newPassword = String(passwordResult.input || '');
+    const confirmPassword = String(passwordResult.inputConfirm || '');
+
+    if (!newPassword || !confirmPassword) {
+      throw new Error('Both password fields are required');
+    }
+    if (newPassword !== confirmPassword) {
+      throw new Error('Passwords do not match');
+    }
+
+    const res = await fetch(`${API_BASE}/admin/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, totp, newPassword }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error || 'Unable to reset password');
+
+    els.email.value = email;
+    els.password.value = '';
+    showToast(body?.message || 'Password reset successful');
+  } catch (error) {
+    els.loginError.textContent = error.message || 'Unable to reset password';
+  }
 });
 
 els.logoutBtn.addEventListener('click', () => {

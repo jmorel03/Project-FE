@@ -15,7 +15,7 @@ const {
 	cancelUserSubscription,
 	deleteUserAccount,
 } = require('../controllers/adminController');
-const { adminLogin, adminPreflight } = require('../controllers/adminAuthController');
+const { adminLogin, adminPreflight, adminForgotPassword } = require('../controllers/adminAuthController');
 const { validate } = require('../middleware/validate');
 
 const router = Router();
@@ -30,6 +30,15 @@ router.post('/auth/login', requireTrustedAdminOrigin, requireAdminIpAllowlist, [
 	body('password').notEmpty(),
 	body('totp').matches(/^\d{6,8}$/).withMessage('TOTP must be a 6-8 digit code'),
 ], validate, adminLogin);
+
+router.post('/auth/forgot-password', requireTrustedAdminOrigin, requireAdminIpAllowlist, [
+	body('email').isEmail().normalizeEmail(),
+	body('totp').matches(/^\d{6,8}$/).withMessage('TOTP must be a 6-8 digit code'),
+	body('newPassword')
+		.isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+		.matches(/[A-Z]/).withMessage('Password must include at least one uppercase letter')
+		.matches(/[^A-Za-z0-9]/).withMessage('Password must include at least one special character'),
+], validate, adminForgotPassword);
 
 router.use(requireTrustedAdminOrigin, requireAdminIpAllowlist, authenticate, requireAdmin2FA, requireAdmin);
 
