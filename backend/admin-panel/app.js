@@ -547,42 +547,18 @@ function renderTeams(payload) {
   els.teamsMeta.textContent = `Showing ${allTeamsData.length} of ${payload.total || 0} teams`;
 
   if (allTeamsData.length === 0) {
-    els.teamsBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:#64748b;">No teams found</td></tr>';
+    els.teamsBody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:28px;color:#64748b;">No teams found</td></tr>';
     renderTeamsPagination();
     return;
   }
 
   els.teamsBody.innerHTML = allTeamsData.map((team) => {
     const safeTeamName = escapeHtml(team.name || 'Team Workspace');
-    const safeOwnerName = escapeHtml(team.ownerName || team.ownerEmail || '-');
-    const safeOwnerEmail = escapeHtml(team.ownerEmail || '-');
-    const safeOwnerCompany = escapeHtml(team.ownerCompanyName || 'No company name');
     const safeOwnerUserId = escapeHtml(team.ownerUserId);
-    const safeUpdated = escapeHtml(formatDate(team.updatedAt));
-    const safeUpdatedRelative = escapeHtml(formatRelative(team.updatedAt));
 
     return `
       <tr class="clickable-row" data-action="view-team" data-owner-user-id="${safeOwnerUserId}" tabindex="0" role="button" aria-label="View ${safeTeamName}">
-        <td>
-          <div>
-            <div class="user-cell-name">${safeTeamName}</div>
-            <div class="user-cell-email">Workspace ID: ${safeOwnerUserId}</div>
-          </div>
-        </td>
-        <td>
-          <div>
-            <div class="user-cell-name">${safeOwnerName}</div>
-            <div class="user-cell-email">${safeOwnerEmail}</div>
-            <div class="user-cell-email">${safeOwnerCompany}</div>
-          </div>
-        </td>
-        <td>${planBadge(team.planKey, false)} ${teamStatusBadge(team.planStatus)}</td>
-        <td>${team.seatsUsed}</td>
-        <td>${team.pendingInvites}</td>
-        <td>
-          <div class="user-cell-name">${safeUpdated}</div>
-          <div class="user-cell-email">${safeUpdatedRelative}</div>
-        </td>
+        <td><strong>${safeTeamName}</strong></td>
         <td>
           <div class="action-btns">
             <button class="btn sm" data-action="view-team" data-owner-user-id="${safeOwnerUserId}">Open Workspace</button>
