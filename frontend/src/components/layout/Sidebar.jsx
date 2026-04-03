@@ -66,9 +66,13 @@ export default function Sidebar() {
             <span className="flex items-center gap-2">
               <span>{label}</span>
               {to === '/settings/team' && !hasBusinessTier ? (
-                <span className="rounded-md bg-amber-300 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
+                <NavLink
+                  to="/settings/subscription"
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-md bg-amber-300 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950 hover:bg-amber-400 transition-colors"
+                >
                   Business
-                </span>
+                </NavLink>
               ) : null}
             </span>
           </NavLink>

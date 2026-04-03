@@ -87,10 +87,10 @@ Validation steps:
 | `VITE_API_URL` | Yes | BLOCKER | [ ] PASS / [ ] FAIL | Points to production API base URL |
 
 Validation steps:
-- [ ] Register from production UI succeeds
-- [ ] Login/logout from production UI succeeds
-- [ ] Refresh session works after page reload
-- [ ] Admin panel login flow works (allowed origin)
+- [x] Register from production UI succeeds
+- [x] Login/logout from production UI succeeds
+- [x] Refresh session works after page reload
+- [x] Admin panel login flow works (allowed origin)
 
 ---
 
