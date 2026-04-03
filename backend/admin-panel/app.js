@@ -74,6 +74,15 @@ const els = {
   copyOutputBtn: document.getElementById('copyOutputBtn'),
   modalCancelBtn: document.getElementById('modalCancelBtn'),
   modalConfirmBtn: document.getElementById('modalConfirmBtn'),
+  teamModal: document.getElementById('teamModal'),
+  teamModalTitle: document.getElementById('teamModalTitle'),
+  teamModalSubtitle: document.getElementById('teamModalSubtitle'),
+  teamSummaryGrid: document.getElementById('teamSummaryGrid'),
+  teamRoleBreakdown: document.getElementById('teamRoleBreakdown'),
+  teamOwnerInfo: document.getElementById('teamOwnerInfo'),
+  teamMembersList: document.getElementById('teamMembersList'),
+  teamInvitesList: document.getElementById('teamInvitesList'),
+  teamModalCloseBtn: document.getElementById('teamModalCloseBtn'),
 };
 
 function formatCurrency(value) {
@@ -83,6 +92,17 @@ function formatCurrency(value) {
 function formatDate(dateStr) {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function formatRelative(dateStr) {
@@ -164,6 +184,130 @@ function closeModal(payload = { confirmed: false, input: '', inputConfirm: '' })
     modalResolver(payload);
     modalResolver = null;
   }
+}
+
+function closeTeamModal() {
+  els.teamModal.classList.add('hidden');
+}
+
+function roleChip(role, count) {
+  const normalized = String(role || '').toLowerCase();
+  const cls = ['owner', 'admin', 'member'].includes(normalized) ? normalized : 'other';
+  return `<span class="role-chip ${cls}">${escapeHtml(normalized.toUpperCase())}<span class="count">${escapeHtml(String(count))}</span></span>`;
+}
+
+function rolePriority(role) {
+  const normalized = String(role || '').toLowerCase();
+  if (normalized === 'owner') return 0;
+  if (normalized === 'admin') return 1;
+  if (normalized === 'member') return 2;
+  return 3;
+}
+
+function renderTeamModal(detail) {
+  const workspaceName = detail.workspace?.name || 'Team Workspace';
+  const ownerName = detail.owner?.name || detail.owner?.email || '-';
+  const ownerEmail = detail.owner?.email || '-';
+  const planKey = String(detail.subscription?.planKey || 'starter');
+  const planStatus = String(detail.subscription?.status || 'free');
+  const periodEnd = detail.subscription?.currentPeriodEnd
+    ? formatDate(detail.subscription.currentPeriodEnd)
+    : 'No active billing period';
+
+  els.teamModalTitle.textContent = workspaceName;
+  els.teamModalSubtitle.textContent = `Owner workspace ID: ${detail.workspace?.ownerUserId || '-'}`;
+
+  const summaryItems = [
+    { label: 'Plan', value: planKey },
+    { label: 'Status', value: planStatus },
+    { label: 'Members', value: String(detail.members?.length || 0) },
+    { label: 'Pending Invites', value: String(detail.invites?.length || 0) },
+  ];
+
+  els.teamSummaryGrid.innerHTML = summaryItems.map((item) => `
+    <div class="team-summary-item">
+      <div class="team-summary-label">${escapeHtml(item.label)}</div>
+      <div class="team-summary-value">${escapeHtml(item.value)}</div>
+    </div>
+  `).join('');
+
+  const memberRoleCounts = (detail.members || []).reduce((acc, m) => {
+    const key = String(m.role || 'member').toLowerCase();
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const roleChips = [
+    roleChip('owner', 1),
+    roleChip('admin', memberRoleCounts.admin || 0),
+    roleChip('member', memberRoleCounts.member || 0),
+  ];
+
+  const extraRoles = Object.keys(memberRoleCounts)
+    .filter((key) => key !== 'admin' && key !== 'member')
+    .sort();
+  for (const role of extraRoles) {
+    roleChips.push(roleChip(role, memberRoleCounts[role]));
+  }
+
+  els.teamRoleBreakdown.innerHTML = roleChips.join('');
+
+  els.teamOwnerInfo.innerHTML = `
+    <div class="team-owner-name">${escapeHtml(ownerName)}</div>
+    <div class="team-owner-meta">${escapeHtml(ownerEmail)}</div>
+    <div class="team-owner-meta">Role: ${roleChip('owner', 1)}</div>
+    <div class="team-owner-meta">Company: ${escapeHtml(detail.owner?.companyName || 'Not set')}</div>
+    <div class="team-owner-meta">Current period end: ${escapeHtml(periodEnd)}</div>
+    <div class="team-owner-meta">Workspace updated: ${escapeHtml(formatDateTime(detail.workspace?.updatedAt))}</div>
+  `;
+
+  const sortedMembers = [...(detail.members || [])].sort((a, b) => {
+    const roleDiff = rolePriority(a.role) - rolePriority(b.role);
+    if (roleDiff !== 0) return roleDiff;
+
+    const nameA = `${a.user?.firstName || ''} ${a.user?.lastName || ''}`.trim() || a.user?.email || '';
+    const nameB = `${b.user?.firstName || ''} ${b.user?.lastName || ''}`.trim() || b.user?.email || '';
+    return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
+  });
+
+  if (sortedMembers.length) {
+    els.teamMembersList.innerHTML = sortedMembers.map((m) => {
+      const memberName = `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.trim() || m.user?.email || 'Unknown member';
+      return `
+        <div class="team-row">
+          <div class="team-row-main">
+            <div class="team-row-title">${escapeHtml(memberName)}</div>
+            <div class="team-row-meta">${escapeHtml(m.user?.email || '-')}</div>
+          </div>
+          <div class="team-row-side">
+            <div>${roleChip(m.role || 'member', 1)}</div>
+            <div>Joined ${escapeHtml(formatDate(m.joinedAt))}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    els.teamMembersList.innerHTML = '<div class="team-empty">No active members yet.</div>';
+  }
+
+  if (detail.invites?.length) {
+    els.teamInvitesList.innerHTML = detail.invites.map((invite) => `
+      <div class="team-row">
+        <div class="team-row-main">
+          <div class="team-row-title">${escapeHtml(invite.email || '-')}</div>
+          <div class="team-row-meta">Sent ${escapeHtml(formatDate(invite.createdAt))}</div>
+        </div>
+        <div class="team-row-side">
+          <div>${roleChip(invite.role || 'member', 1)}</div>
+          <div>Expires ${escapeHtml(formatDate(invite.expiresAt))}</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    els.teamInvitesList.innerHTML = '<div class="team-empty">No pending invites.</div>';
+  }
+
+  els.teamModal.classList.remove('hidden');
 }
 
 function openModal({
@@ -403,8 +547,8 @@ function renderTeams(payload) {
         <td>${formatDate(team.updatedAt)}</td>
         <td>
           <div class="action-btns">
-            <button class="btn sm" data-action="view-team" data-owner-user-id="${safeOwnerUserId}">View Team</button>
-            <button class="btn sm" data-action="view-owner" data-owner-user-id="${safeOwnerUserId}">View Owner</button>
+            <button class="btn sm" data-action="view-team" data-owner-user-id="${safeOwnerUserId}">Open Workspace</button>
+            <button class="btn sm" data-action="view-owner" data-owner-user-id="${safeOwnerUserId}">Open Owner Record</button>
           </div>
         </td>
       </tr>
@@ -547,28 +691,7 @@ async function handleUserAction(event) {
   try {
     if (action === 'view-team') {
       const detail = await apiFetch(`/admin/teams/${ownerUserId}`);
-      const summary = [
-        `Team: ${detail.workspace?.name || '-'}`,
-        `Owner: ${detail.owner?.name || '-'} (${detail.owner?.email || '-'})`,
-        `Plan: ${detail.subscription?.planKey || 'starter'} (${detail.subscription?.status || 'free'})`,
-        `Members: ${detail.members?.length || 0}`,
-        `Pending Invites: ${detail.invites?.length || 0}`,
-        '',
-        'Members:',
-        ...(detail.members?.map((m) => `- ${m.user?.email || 'unknown'} (${m.role})`) || ['- none']),
-        '',
-        'Invites:',
-        ...(detail.invites?.map((i) => `- ${i.email} (${i.role}) exp ${formatDate(i.expiresAt)}`) || ['- none']),
-      ].join('\n');
-
-      await openModal({
-        title: 'Team Details',
-        message: 'Admin read-only access for this team workspace.',
-        showOutput: true,
-        outputValue: summary,
-        hideCancel: true,
-        confirmLabel: 'Close',
-      });
+      renderTeamModal(detail);
       return;
     }
 
@@ -948,6 +1071,12 @@ els.actionModal.addEventListener('click', (e) => {
   if (e.target.dataset.closeModal === 'true') closeModal();
 });
 
+els.teamModal?.addEventListener('click', (e) => {
+  if (e.target.dataset.closeTeamModal === 'true') closeTeamModal();
+});
+
+els.teamModalCloseBtn?.addEventListener('click', closeTeamModal);
+
 els.copyOutputBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(els.modalOutput.value);
@@ -959,6 +1088,7 @@ els.copyOutputBtn.addEventListener('click', async () => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !els.actionModal.classList.contains('hidden')) closeModal();
+  if (e.key === 'Escape' && !els.teamModal.classList.contains('hidden')) closeTeamModal();
 });
 
 (async function bootstrap() {
