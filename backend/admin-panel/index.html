@@ -130,17 +130,40 @@
         </section>
 
         <section id="teamsView" class="view hidden">
-          <div class="card" style="padding:10px 12px;margin-bottom:12px;">
-            <p class="muted">Workspace Directory: open any team to review ownership, plan status, active members, and pending invites in one organized view.</p>
+          <div class="card teams-header-card">
+            <div class="teams-header-main">
+              <h3>Workspace Directory</h3>
+              <p class="muted">Review ownership, plan readiness, seat usage, and pending invites in one place.</p>
+            </div>
+            <div class="teams-header-note">Tip: Open Workspace for full team drill-down.</div>
           </div>
-          <div class="filter-bar card">
-            <div class="filter-row">
-              <div class="search-wrap">
-                <input id="teamSearchInput" type="text" placeholder="Search workspace name, owner email, or company..." />
-              </div>
-              <div class="filter-controls">
-                <button id="teamSearchBtn" class="btn primary">Find Workspace</button>
-              </div>
+
+          <div class="teams-kpi-grid" id="teamsKpiGrid">
+            <div class="metric-card teams-kpi-card">
+              <div class="metric-label">Workspaces</div>
+              <div class="metric-value" id="teamsKpiTotal">0</div>
+            </div>
+            <div class="metric-card teams-kpi-card">
+              <div class="metric-label">Seats Used (Shown)</div>
+              <div class="metric-value" id="teamsKpiSeats">0</div>
+            </div>
+            <div class="metric-card teams-kpi-card">
+              <div class="metric-label">Pending Invites (Shown)</div>
+              <div class="metric-value" id="teamsKpiInvites">0</div>
+            </div>
+            <div class="metric-card teams-kpi-card">
+              <div class="metric-label">Business Plans (Shown)</div>
+              <div class="metric-value" id="teamsKpiBusiness">0</div>
+            </div>
+          </div>
+
+          <div class="filter-bar card teams-toolbar">
+            <div class="teams-toolbar-left">
+              <input id="teamSearchInput" type="text" placeholder="Search workspace, owner, or company..." />
+            </div>
+            <div class="teams-toolbar-right">
+              <button id="teamSearchBtn" class="btn primary">Search Directory</button>
+              <button id="teamClearBtn" class="btn">Clear</button>
             </div>
           </div>
 
@@ -151,10 +174,10 @@
                   <tr>
                     <th>Workspace</th>
                     <th>Owner Account</th>
-                    <th>Plan Status</th>
+                    <th>Plan</th>
                     <th>Seats Used</th>
                     <th>Pending Invites</th>
-                    <th>Last Activity</th>
+                    <th>Updated</th>
                     <th>Actions</th>
                   </tr>
                 </thead>

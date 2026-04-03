@@ -59,6 +59,11 @@ const els = {
   teamsPagination: document.getElementById('teamsPagination'),
   teamSearchInput: document.getElementById('teamSearchInput'),
   teamSearchBtn: document.getElementById('teamSearchBtn'),
+  teamClearBtn: document.getElementById('teamClearBtn'),
+  teamsKpiTotal: document.getElementById('teamsKpiTotal'),
+  teamsKpiSeats: document.getElementById('teamsKpiSeats'),
+  teamsKpiInvites: document.getElementById('teamsKpiInvites'),
+  teamsKpiBusiness: document.getElementById('teamsKpiBusiness'),
   toastContainer: document.getElementById('toastContainer'),
   actionModal: document.getElementById('actionModal'),
   modalTitle: document.getElementById('modalTitle'),
@@ -512,10 +517,31 @@ function renderUsers(payload) {
   renderPagination();
 }
 
+function teamStatusBadge(status) {
+  const normalized = String(status || 'free').toLowerCase();
+  if (normalized === 'active') return '<span class="badge active">Active</span>';
+  if (normalized === 'trialing') return '<span class="badge trialing">Trial</span>';
+  return '<span class="badge free">Free</span>';
+}
+
+function renderTeamKpis(payload, teams) {
+  const totalWorkspaces = Number(payload.total || 0);
+  const shownSeats = teams.reduce((sum, team) => sum + Number(team.seatsUsed || 0), 0);
+  const shownInvites = teams.reduce((sum, team) => sum + Number(team.pendingInvites || 0), 0);
+  const shownBusiness = teams.filter((team) => String(team.planKey || '').toLowerCase() === 'business').length;
+
+  if (els.teamsKpiTotal) els.teamsKpiTotal.textContent = String(totalWorkspaces);
+  if (els.teamsKpiSeats) els.teamsKpiSeats.textContent = String(shownSeats);
+  if (els.teamsKpiInvites) els.teamsKpiInvites.textContent = String(shownInvites);
+  if (els.teamsKpiBusiness) els.teamsKpiBusiness.textContent = String(shownBusiness);
+}
+
 function renderTeams(payload) {
   allTeamsData = payload.teams || [];
   state.totalTeams = payload.total || 0;
   state.teamsTotalPages = payload.totalPages || 1;
+
+  renderTeamKpis(payload, allTeamsData);
 
   els.teamsBadge.textContent = String(payload.total || '');
   els.teamsMeta.textContent = `Showing ${allTeamsData.length} of ${payload.total || 0} teams`;
@@ -530,21 +556,33 @@ function renderTeams(payload) {
     const safeTeamName = escapeHtml(team.name || 'Team Workspace');
     const safeOwnerName = escapeHtml(team.ownerName || team.ownerEmail || '-');
     const safeOwnerEmail = escapeHtml(team.ownerEmail || '-');
+    const safeOwnerCompany = escapeHtml(team.ownerCompanyName || 'No company name');
     const safeOwnerUserId = escapeHtml(team.ownerUserId);
+    const safeUpdated = escapeHtml(formatDate(team.updatedAt));
+    const safeUpdatedRelative = escapeHtml(formatRelative(team.updatedAt));
 
     return `
       <tr class="clickable-row" data-action="view-team" data-owner-user-id="${safeOwnerUserId}" tabindex="0" role="button" aria-label="View ${safeTeamName}">
-        <td><strong>${safeTeamName}</strong></td>
+        <td>
+          <div>
+            <div class="user-cell-name">${safeTeamName}</div>
+            <div class="user-cell-email">Workspace ID: ${safeOwnerUserId}</div>
+          </div>
+        </td>
         <td>
           <div>
             <div class="user-cell-name">${safeOwnerName}</div>
             <div class="user-cell-email">${safeOwnerEmail}</div>
+            <div class="user-cell-email">${safeOwnerCompany}</div>
           </div>
         </td>
-        <td>${planBadge(team.planKey, false)}</td>
+        <td>${planBadge(team.planKey, false)} ${teamStatusBadge(team.planStatus)}</td>
         <td>${team.seatsUsed}</td>
         <td>${team.pendingInvites}</td>
-        <td>${formatDate(team.updatedAt)}</td>
+        <td>
+          <div class="user-cell-name">${safeUpdated}</div>
+          <div class="user-cell-email">${safeUpdatedRelative}</div>
+        </td>
         <td>
           <div class="action-btns">
             <button class="btn sm" data-action="view-team" data-owner-user-id="${safeOwnerUserId}">Open Workspace</button>
@@ -1011,6 +1049,13 @@ els.searchBtn.addEventListener('click', () => {
 els.teamSearchBtn.addEventListener('click', () => {
   state.teamsPage = 1;
   state.teamsSearch = els.teamSearchInput.value.trim();
+  loadTeams();
+});
+
+els.teamClearBtn?.addEventListener('click', () => {
+  state.teamsPage = 1;
+  state.teamsSearch = '';
+  els.teamSearchInput.value = '';
   loadTeams();
 });
 
