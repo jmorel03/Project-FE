@@ -49,10 +49,10 @@ Legend:
 | `ADMIN_IP_ALLOWLIST` | Strongly Yes | HIGH | [ ] PASS / [ ] FAIL | Restrict to trusted office/VPN CIDRs |
 
 Validation steps:
-- [ ] Admin login from allowed IP works
+- [x] Admin login from allowed IP works
 - [ ] Admin login from blocked IP is denied
-- [ ] Wrong TOTP is denied
-- [ ] Repeated failed admin logins trigger lockout
+- [x] Wrong TOTP is denied
+- [x] Repeated failed admin logins trigger lockout
 
 ---
 
@@ -73,10 +73,10 @@ Validation steps:
 | `SUPPORT_EMAIL` | Yes | HIGH | [ ] PASS / [ ] FAIL | Receives support traffic |
 
 Validation steps:
-- [ ] Live checkout session succeeds
-- [ ] Webhook event is accepted and processed
-- [ ] Support form email sends successfully
-- [ ] Invoice email sends successfully
+- [x] Live checkout session succeeds
+- [x] Webhook event is accepted and processed
+- [x] Support form email sends successfully
+- [x] Invoice email sends successfully
 
 ---
 
