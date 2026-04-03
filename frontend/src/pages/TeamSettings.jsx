@@ -69,9 +69,17 @@ export default function TeamSettings() {
   const isWorkspaceAdmin = workspaceRole === 'admin';
   const isBusiness = String(team?.plan?.key || '').toLowerCase() === 'business';
   const seats = team?.seats || { used: 1, limit: 1, remaining: 0 };
+  const ownerSeatUser = team?.ownerSeat?.user || null;
+  const ownerSeatName = ownerSeatUser
+    ? (`${ownerSeatUser.firstName || ''} ${ownerSeatUser.lastName || ''}`.trim() || ownerSeatUser.email)
+    : 'Workspace Owner';
+  const ownerSeatEmail = ownerSeatUser?.email || '';
+  const isOwnerSeatCurrentActor = Boolean(ownerSeatUser?.id) && ownerSeatUser.id === actorUserId;
   const members = team?.members || [];
   const invites = team?.invites || [];
   const actorUserId = String(team?.workspace?.actorUserId || '');
+  const ownerUserId = String(team?.workspace?.ownerUserId || '');
+  const isOwnerActor = Boolean(actorUserId) && actorUserId === ownerUserId;
   const nextWorkspaceName = String(workspaceName || '').trim();
   const workspaceNameChanged = Boolean(nextWorkspaceName) && nextWorkspaceName !== currentWorkspaceName;
 
@@ -275,15 +283,21 @@ export default function TeamSettings() {
             <tbody className="divide-y divide-slate-100 bg-white">
               <tr>
                 <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900">Owner Seat</p>
-                  <p className="text-xs text-slate-500">Primary workspace account</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-slate-900">{ownerSeatName}</p>
+                    <span className="inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                      Owner
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">{ownerSeatEmail || 'Primary workspace account'}</p>
+                  <p className="text-xs text-slate-500">Primary workspace account{isOwnerSeatCurrentActor ? ' (you)' : ''}</p>
                 </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">
                     admin
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">Fixed</td>
+                <td className="px-4 py-3 text-xs text-slate-500">Can change admins to workers</td>
               </tr>
 
               {members.map((member) => {
@@ -291,6 +305,7 @@ export default function TeamSettings() {
                 const canChange = isWorkspaceAdmin && isBusiness;
                 const isCurrentActor = member.user.id === actorUserId;
                 const blockSelfDemotion = isCurrentActor && currentRole === 'admin';
+                const blockOwnerOnlyDemotion = !isOwnerActor && currentRole === 'admin';
                 const blockSelfRemoval = isCurrentActor && currentRole === 'admin';
 
                 return (
@@ -322,7 +337,7 @@ export default function TeamSettings() {
                               <option
                                 key={opt.value}
                                 value={opt.value}
-                                disabled={blockSelfDemotion && opt.value === 'worker'}
+                                disabled={(blockSelfDemotion || blockOwnerOnlyDemotion) && opt.value === 'worker'}
                               >
                                 {opt.label}
                               </option>
@@ -343,6 +358,9 @@ export default function TeamSettings() {
                       )}
                       {blockSelfDemotion && (
                         <p className="mt-2 text-xs text-amber-700">You cannot change your own role to worker.</p>
+                      )}
+                      {blockOwnerOnlyDemotion && (
+                        <p className="mt-2 text-xs text-amber-700">Only the workspace owner can change an admin to worker.</p>
                       )}
                     </td>
                   </tr>

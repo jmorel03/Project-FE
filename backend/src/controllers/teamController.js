@@ -136,8 +136,17 @@ exports.getTeam = async (req, res, next) => {
   try {
     const ownerUserId = req.userId;
     const activePlanKey = await getActivePlanKey(ownerUserId);
-    const [workspace, members, pendingInvites] = await Promise.all([
+    const [workspace, ownerUser, members, pendingInvites] = await Promise.all([
       ensureWorkspace(ownerUserId),
+      prisma.user.findUnique({
+        where: { id: ownerUserId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      }),
       getTeamMembersForOwner(ownerUserId),
       prisma.teamInvite.findMany({
         where: {
@@ -179,6 +188,14 @@ exports.getTeam = async (req, res, next) => {
       },
       ownerSeat: {
         role: 'admin',
+        user: ownerUser
+          ? {
+            id: ownerUser.id,
+            email: ownerUser.email,
+            firstName: ownerUser.firstName,
+            lastName: ownerUser.lastName,
+          }
+          : null,
       },
       members: members.map((member) => ({
         role: String(member.role || '').toLowerCase(),
@@ -512,6 +529,7 @@ exports.updateTeamMemberRole = async (req, res, next) => {
       },
       select: {
         id: true,
+        role: true,
       },
     });
 
@@ -523,6 +541,17 @@ exports.updateTeamMemberRole = async (req, res, next) => {
       return res.status(400).json({
         error: 'Admins cannot change their own role to worker.',
         code: 'TEAM_SELF_DEMOTION_NOT_ALLOWED',
+      });
+    }
+
+    const currentRole = String(membership.role || '').toLowerCase();
+    const isOwnerActor = ownerUserId === actorUserId;
+    const isAdminDemotion = currentRole === 'admin' && role === 'worker';
+
+    if (isAdminDemotion && !isOwnerActor) {
+      return res.status(403).json({
+        error: 'Only the workspace owner can change an admin to worker.',
+        code: 'TEAM_OWNER_REQUIRED_FOR_ADMIN_DEMOTION',
       });
     }
 
