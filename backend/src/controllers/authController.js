@@ -10,6 +10,17 @@ const { sendPasswordResetEmail } = require('../services/emailService');
 const LOGIN_MAX_FAILED_ATTEMPTS = Math.max(1, Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS || 5));
 const LOGIN_LOCK_MINUTES = Math.max(1, Number(process.env.LOGIN_LOCK_MINUTES || 15));
 
+function buildLockoutWarning(nextFailedAttempts, maxFailedAttempts) {
+  if (nextFailedAttempts < 3 || nextFailedAttempts >= maxFailedAttempts) {
+    return '';
+  }
+
+  const remaining = maxFailedAttempts - nextFailedAttempts;
+  if (remaining <= 0) return '';
+
+  return `Warning: ${remaining} more ${remaining === 1 ? 'attempt' : 'attempts'} before account lockout.`;
+}
+
 function hashRefreshToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
@@ -158,6 +169,7 @@ exports.login = async (req, res, next) => {
     if (!valid) {
       const nextFailedAttempts = (user.failedLoginAttempts || 0) + 1;
       const shouldLock = nextFailedAttempts >= LOGIN_MAX_FAILED_ATTEMPTS;
+      const warning = buildLockoutWarning(nextFailedAttempts, LOGIN_MAX_FAILED_ATTEMPTS);
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -172,7 +184,13 @@ exports.login = async (req, res, next) => {
         return res.status(429).json({ error: 'Too many failed login attempts. Please try again later.' });
       }
 
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({
+        error: warning
+          ? `Invalid email or password. ${warning}`
+          : 'Invalid email or password',
+        failedAttempts: nextFailedAttempts,
+        attemptsRemaining: Math.max(LOGIN_MAX_FAILED_ATTEMPTS - nextFailedAttempts, 0),
+      });
     }
 
     if (user.failedLoginAttempts || user.lockUntil) {

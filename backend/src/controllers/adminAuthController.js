@@ -14,9 +14,21 @@ const ADMIN_LOGIN_LOCK_MINUTES = Math.max(
   Number(process.env.ADMIN_LOGIN_LOCK_MINUTES || process.env.LOGIN_LOCK_MINUTES || 15),
 );
 
+function buildLockoutWarning(nextFailedAttempts, maxFailedAttempts) {
+  if (nextFailedAttempts < 3 || nextFailedAttempts >= maxFailedAttempts) {
+    return '';
+  }
+
+  const remaining = maxFailedAttempts - nextFailedAttempts;
+  if (remaining <= 0) return '';
+
+  return `Warning: ${remaining} more ${remaining === 1 ? 'attempt' : 'attempts'} before account lockout.`;
+}
+
 async function recordAdminFailedAttempt(user) {
   const nextFailedAttempts = (user.failedLoginAttempts || 0) + 1;
   const shouldLock = nextFailedAttempts >= ADMIN_LOGIN_MAX_FAILED_ATTEMPTS;
+  const warning = buildLockoutWarning(nextFailedAttempts, ADMIN_LOGIN_MAX_FAILED_ATTEMPTS);
 
   await prisma.user.update({
     where: { id: user.id },
@@ -28,7 +40,12 @@ async function recordAdminFailedAttempt(user) {
     },
   });
 
-  return shouldLock;
+  return {
+    shouldLock,
+    nextFailedAttempts,
+    attemptsRemaining: Math.max(ADMIN_LOGIN_MAX_FAILED_ATTEMPTS - nextFailedAttempts, 0),
+    warning,
+  };
 }
 
 function parseCsv(value) {
@@ -106,11 +123,16 @@ async function verifyAdminCredentials({ email, password }) {
 
   const validPassword = await bcrypt.compare(String(password || ''), user.password);
   if (!validPassword) {
-    const locked = await recordAdminFailedAttempt(user);
-    if (locked) {
+    const result = await recordAdminFailedAttempt(user);
+    if (result.shouldLock) {
       return { errorStatus: 429, error: 'Too many failed admin login attempts. Please try again later.' };
     }
-    return { errorStatus: 401, error: 'Invalid admin credentials' };
+    return {
+      errorStatus: 401,
+      error: result.warning ? `Invalid admin credentials. ${result.warning}` : 'Invalid admin credentials',
+      failedAttempts: result.nextFailedAttempts,
+      attemptsRemaining: result.attemptsRemaining,
+    };
   }
 
   if (!isAdminUser(user)) return { errorStatus: 403, error: 'Admin access required' };
@@ -130,7 +152,11 @@ exports.adminPreflight = async (req, res, next) => {
 
     const verified = await verifyAdminCredentials({ email, password });
     if (verified.error) {
-      return res.status(verified.errorStatus || 400).json({ error: verified.error });
+      return res.status(verified.errorStatus || 400).json({
+        error: verified.error,
+        ...(verified.failedAttempts !== undefined ? { failedAttempts: verified.failedAttempts } : {}),
+        ...(verified.attemptsRemaining !== undefined ? { attemptsRemaining: verified.attemptsRemaining } : {}),
+      });
     }
 
     return res.json({
@@ -158,11 +184,15 @@ exports.adminLogin = async (req, res, next) => {
       secret,
     });
     if (!verification?.valid) {
-      const locked = await recordAdminFailedAttempt(user);
-      if (locked) {
+      const result = await recordAdminFailedAttempt(user);
+      if (result.shouldLock) {
         return res.status(429).json({ error: 'Too many failed admin login attempts. Please try again later.' });
       }
-      return res.status(401).json({ error: 'Invalid TOTP code' });
+      return res.status(401).json({
+        error: result.warning ? `Invalid TOTP code. ${result.warning}` : 'Invalid TOTP code',
+        failedAttempts: result.nextFailedAttempts,
+        attemptsRemaining: result.attemptsRemaining,
+      });
     }
 
     if (user.failedLoginAttempts || user.lockUntil) {
